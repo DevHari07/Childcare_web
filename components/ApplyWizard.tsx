@@ -577,6 +577,147 @@ export default function ApplyWizard() {
   const [otherChildDraft, setOtherChildDraft] = useState<OtherChildEntry>(EMPTY_OTHER_CHILD);
   const [showSignaturePage, setShowSignaturePage] = useState(false);
   const [soSworn, setSoSworn] = useState(false);
+
+  // Review inline editing states
+  const [editingSection, setEditingSection] = useState<string | null>(null);
+  const [rollbackForm, setRollbackForm] = useState<ApplyFormData | null>(null);
+  const [rollbackDetails, setRollbackDetails] = useState<ApplicationDetails | null>(null);
+
+  const [editingChildId, setEditingChildId] = useState<string | null>(null);
+  const [editingSupportOrderId, setEditingSupportOrderId] = useState<string | null>(null);
+  const [editingOtherChildId, setEditingOtherChildId] = useState<string | null>(null);
+
+  const startEditingSection = (section: string) => {
+    setRollbackForm(JSON.parse(JSON.stringify(form)));
+    setRollbackDetails(JSON.parse(JSON.stringify(details)));
+    setEditingSection(section);
+  };
+
+  const cancelEditingSection = () => {
+    if (rollbackForm) setForm(rollbackForm);
+    if (rollbackDetails) setDetails(rollbackDetails);
+    setEditingSection(null);
+    setRollbackForm(null);
+    setRollbackDetails(null);
+    setError('');
+    
+    // Reset any sub-item editing state
+    setEditingChildId(null);
+    setEditingSupportOrderId(null);
+    setEditingOtherChildId(null);
+    setChildDraft(EMPTY_CHILD);
+    setSupportOrderDraft(EMPTY_SUPPORT_ORDER);
+    setOtherChildDraft(EMPTY_OTHER_CHILD);
+    setShowChildForm(false);
+    setShowSupportOrderForm(false);
+    setShowOtherChildForm(false);
+  };
+
+  const saveEditingSection = () => {
+    // Basic verification on save
+    if (editingSection === 'household-info') {
+      if (!form.fullName.trim() || !form.dob.trim() || !form.phone.trim() || !form.email.trim() || !form.address.trim()) {
+        setError('Please fill in all applicant details.');
+        return;
+      }
+    }
+    setEditingSection(null);
+    setRollbackForm(null);
+    setRollbackDetails(null);
+    setError('');
+    
+    // Save draft to localStorage so updates are saved
+    saveDraft(form, stepIndex);
+  };
+
+  const startEditingChild = (child: ChildEntry) => {
+    setChildDraft({ ...child });
+    setEditingChildId(child.id);
+    setShowChildForm(true);
+  };
+
+  const handleUpdateChild = () => {
+    if (
+      !childDraft.firstName.trim() ||
+      !childDraft.lastName.trim() ||
+      !childDraft.gender ||
+      !childDraft.birthDate ||
+      !childDraft.birthCity ||
+      !childDraft.birthState ||
+      !childDraft.relationship ||
+      !childDraft.paternityEstablished ||
+      !childDraft.state
+    ) {
+      setError(t('apply.step.childValidationMsg') || 'Please fill in all required fields for the child.');
+      return;
+    }
+    setError('');
+
+    setForm((prev) => ({
+      ...prev,
+      children: prev.children.map((c) => (c.id === editingChildId ? { ...childDraft } : c)),
+    }));
+    setChildDraft(EMPTY_CHILD);
+    setEditingChildId(null);
+    setShowChildForm(false);
+  };
+
+  const startEditingSupportOrder = (order: SupportOrderEntry) => {
+    setSupportOrderDraft({ ...order });
+    setEditingSupportOrderId(order.id);
+    setShowSupportOrderForm(true);
+  };
+
+  const handleUpdateSupportOrder = () => {
+    if (
+      !supportOrderDraft.orderType ||
+      !supportOrderDraft.orderNumber.trim() ||
+      !supportOrderDraft.stateFiled ||
+      !supportOrderDraft.dateFiled ||
+      !supportOrderDraft.amount.trim() ||
+      !supportOrderDraft.frequency ||
+      !supportOrderDraft.startDate
+    ) {
+      setError('Please fill in all required fields for the support order.');
+      return;
+    }
+    setError('');
+
+    setForm((prev) => ({
+      ...prev,
+      supportOrders: (prev.supportOrders || []).map((o) => (o.id === editingSupportOrderId ? { ...supportOrderDraft } : o)),
+    }));
+    setSupportOrderDraft(EMPTY_SUPPORT_ORDER);
+    setEditingSupportOrderId(null);
+    setShowSupportOrderForm(false);
+  };
+
+  const startEditingOtherChild = (child: OtherChildEntry) => {
+    setOtherChildDraft({ ...child });
+    setEditingOtherChildId(child.id);
+    setShowOtherChildForm(true);
+  };
+
+  const handleUpdateOtherChild = () => {
+    if (
+      !otherChildDraft.firstName.trim() ||
+      !otherChildDraft.lastName.trim() ||
+      !otherChildDraft.birthDate
+    ) {
+      setError('Please fill in all required fields for the child.');
+      return;
+    }
+    setError('');
+
+    setForm((prev) => ({
+      ...prev,
+      otherChildren: (prev.otherChildren || []).map((c) => (c.id === editingOtherChildId ? { ...otherChildDraft } : c)),
+    }));
+    setOtherChildDraft(EMPTY_OTHER_CHILD);
+    setEditingOtherChildId(null);
+    setShowOtherChildForm(false);
+  };
+
   const cardBodyRef = React.useRef<HTMLDivElement>(null);
 
   const scrollCardToTop = () => {
@@ -3120,82 +3261,1029 @@ export default function ApplyWizard() {
                     <>
                       <p className="apply-step-subtitle">{t('review.subtitle')}</p>
 
+                      {/* SECTION 1: APPLICATION PREFERENCES */}
                       <div className="review-section">
                         <div className="review-section-header">
-                          <h3>{t(STEP_LABEL_KEYS.apply.label)}</h3>
-                          <button type="button" className="review-edit-link" onClick={() => goToStep(0)}>{t('review.edit')}</button>
+                          <h3>Application Type & Service Preferences</h3>
+                          {editingSection === 'pref' ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Cancel</button>
+                              <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={saveEditingSection}>Save</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="review-edit-link" onClick={() => startEditingSection('pref')}>{t('review.edit')}</button>
+                          )}
                         </div>
-                        <div className="review-section-body">
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.applicantType')}</span>
-                            <span className="rf-value">{form.applicantType === 'parent_guardian' ? t('apply.step1.parentTitle') : t('apply.step1.relativeTitle')}</span>
+                        {editingSection === 'pref' ? (
+                          <div className="review-edit-form-container">
+                            <ChoiceBox label="I want to:">
+                              <RadioRow name="app-mode" checked={form.applicationMode === 'new'} onChange={() => setForm(p => ({ ...p, applicationMode: 'new' }))} title="Start a New Application" />
+                              <RadioRow name="app-mode" checked={form.applicationMode === 'saved'} onChange={() => setForm(p => ({ ...p, applicationMode: 'saved' }))} title="Resume a Saved Application" />
+                            </ChoiceBox>
+                            <ChoiceBox label="I am the:">
+                              <RadioRow name="app-type" checked={form.applicantType === 'parent_guardian'} onChange={() => setForm(p => ({ ...p, applicantType: 'parent_guardian' }))} title="Parent or Guardian" description="I am applying for child support services for a child in my custody." />
+                              <RadioRow name="app-type" checked={form.applicantType === 'relative_caregiver'} onChange={() => setForm(p => ({ ...p, applicantType: 'relative_caregiver' }))} title="Relative or Caregiver" description="I am caring for a child who is not my biological child." />
+                            </ChoiceBox>
+                            <ChoiceBox label="Service requested:">
+                              <RadioRow name="assistance-type" checked={form.assistanceType === 'full'} onChange={() => setForm(p => ({ ...p, assistanceType: 'full' }))} title="Full Services" description="Locating parents, establishing paternity, establishing/modifying/enforcing support orders." />
+                              <RadioRow name="assistance-type" checked={form.assistanceType === 'search_only'} onChange={() => setForm(p => ({ ...p, assistanceType: 'search_only' }))} title="Locate / Search Only" description="Locate services only, without enforcement or paternity establishment." />
+                            </ChoiceBox>
+                            <ChoiceBox label="Receiving Public Assistance:">
+                              <RadioRow name="public-assist" checked={form.receivesPublicAssistance === 'yes'} onChange={() => setForm(p => ({ ...p, receivesPublicAssistance: 'yes' }))} title="Yes" description="Receiving TANF, Medicaid, SNAP, etc." />
+                              <RadioRow name="public-assist" checked={form.receivesPublicAssistance === 'no'} onChange={() => setForm(p => ({ ...p, receivesPublicAssistance: 'no' }))} title="No" />
+                            </ChoiceBox>
                           </div>
-                        </div>
+                        ) : (
+                          <div className="review-section-body review-data-grid">
+                            <div className="review-data-item">
+                              <span className="review-item-label">Applicant Type</span>
+                              <span className="review-item-value">{form.applicantType === 'parent_guardian' ? 'Parent or Guardian' : form.applicantType === 'relative_caregiver' ? 'Relative or Caregiver' : '—'}</span>
+                            </div>
+                            <div className="review-data-item">
+                              <span className="review-item-label">Application Mode</span>
+                              <span className="review-item-value">{form.applicationMode === 'new' ? 'Start a New Application' : form.applicationMode === 'saved' ? 'Resume a Saved Application' : '—'}</span>
+                            </div>
+                            <div className="review-data-item">
+                              <span className="review-item-label">Service Type</span>
+                              <span className="review-item-value">{form.assistanceType === 'full' ? 'Full Services' : form.assistanceType === 'search_only' ? 'Locate / Search Only' : '—'}</span>
+                            </div>
+                            <div className="review-data-item">
+                              <span className="review-item-label">Receives Public Assistance</span>
+                              <span className="review-item-value">{form.receivesPublicAssistance === 'yes' ? 'Yes' : form.receivesPublicAssistance === 'no' ? 'No' : '—'}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
+                      {/* SECTION 2: CUSTODIAL PARENT PROFILE */}
                       <div className="review-section">
                         <div className="review-section-header">
-                          <h3>{t(STEP_LABEL_KEYS.assistance.label)}</h3>
-                          <button type="button" className="review-edit-link" onClick={() => goToStep(3)}>{t('review.edit')}</button>
+                          <h3>Custodial Parent Profile</h3>
+                          {editingSection === 'custodial-profile' ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Cancel</button>
+                              <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={saveEditingSection}>Save</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="review-edit-link" onClick={() => startEditingSection('custodial-profile')}>{t('review.edit')}</button>
+                          )}
                         </div>
-                        <div className="review-section-body">
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.serviceType')}</span>
-                            <span className="rf-value">{form.assistanceType === 'full' ? t('apply.step4.fullTitle') : t('apply.step4.searchTitle')}</span>
+                        {editingSection === 'custodial-profile' ? (
+                          <div className="review-edit-form-container">
+                            <FormBar title="Personal Details" />
+                            <div className="field-table" style={{ marginBottom: 16 }}>
+                              <FieldRow label="First Name" required>
+                                <input type="text" value={details.custodialName.firstName} onChange={(e) => updateCustodialName({ firstName: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Middle Name">
+                                <input type="text" value={details.custodialName.middleName} onChange={(e) => updateCustodialName({ middleName: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Last Name" required>
+                                <input type="text" value={details.custodialName.lastName} onChange={(e) => updateCustodialName({ lastName: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Suffix">
+                                <input type="text" value={details.custodialName.suffix} onChange={(e) => updateCustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
+                              </FieldRow>
+                              <FieldRow label="SSN" required hint="(9 digits, numbers only)">
+                                <input type="text" value={details.custodialName.ssn} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                              </FieldRow>
+                              <FieldRow label="Gender" required>
+                                <TriRadio
+                                  name="custodial-gender-edit"
+                                  value={details.custodialName.gender}
+                                  onChange={(v) => updateCustodialName({ gender: v as PersonNameInfo['gender'] })}
+                                  options={[{ value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }]}
+                                />
+                              </FieldRow>
+                              <FieldRow label="Birth Date" required>
+                                <input type="date" value={details.custodialName.birthDate} onChange={(e) => updateCustodialName({ birthDate: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Marital Status" required>
+                                <select value={details.custodialName.maritalStatus} onChange={(e) => updateCustodialName({ maritalStatus: e.target.value })}>
+                                  <option value="">Please Select</option>
+                                  {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                              </FieldRow>
+                              <FieldRow label="Maiden Name">
+                                <input type="text" value={details.custodialName.maidenName} onChange={(e) => updateCustodialName({ maidenName: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Spouse Name">
+                                <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Date Married">
+                                <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
+                              </FieldRow>
+                            </div>
+
+                            <FormBar title="Residential Address" />
+                            <div className="field-table" style={{ marginBottom: 16 }}>
+                              <FieldRow label="Address Line 1" required>
+                                <input type="text" value={details.custodialAddress.residential.line1} onChange={(e) => updateCustodialAddressBlock('residential', { line1: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Address Line 2">
+                                <input type="text" value={details.custodialAddress.residential.line2} onChange={(e) => updateCustodialAddressBlock('residential', { line2: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="City" required>
+                                <input type="text" value={details.custodialAddress.residential.city} onChange={(e) => updateCustodialAddressBlock('residential', { city: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="State" required>
+                                <select value={details.custodialAddress.residential.state} onChange={(e) => updateCustodialAddressBlock('residential', { state: e.target.value })}>
+                                  <option value="">Please Select</option>
+                                  {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </FieldRow>
+                              <FieldRow label="Zip Code" required>
+                                <input type="text" value={details.custodialAddress.residential.zip} onChange={(e) => updateCustodialAddressBlock('residential', { zip: e.target.value })} maxLength={10} />
+                              </FieldRow>
+                            </div>
+
+                            <FormBar title="Mailing Address" />
+                            <div className="field-table" style={{ marginBottom: 16 }}>
+                              <FieldRow label="Address Line 1">
+                                <input type="text" value={details.custodialAddress.mailing.line1} onChange={(e) => updateCustodialAddressBlock('mailing', { line1: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="Address Line 2">
+                                <input type="text" value={details.custodialAddress.mailing.line2} onChange={(e) => updateCustodialAddressBlock('mailing', { line2: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="City">
+                                <input type="text" value={details.custodialAddress.mailing.city} onChange={(e) => updateCustodialAddressBlock('mailing', { city: e.target.value })} />
+                              </FieldRow>
+                              <FieldRow label="State">
+                                <select value={details.custodialAddress.mailing.state} onChange={(e) => updateCustodialAddressBlock('mailing', { state: e.target.value })}>
+                                  <option value="">Please Select</option>
+                                  {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </FieldRow>
+                              <FieldRow label="Zip Code">
+                                <input type="text" value={details.custodialAddress.mailing.zip} onChange={(e) => updateCustodialAddressBlock('mailing', { zip: e.target.value })} maxLength={10} />
+                              </FieldRow>
+                            </div>
+
+                            <FormBar title="Contact Details" />
+                            <div className="field-table" style={{ marginBottom: 16 }}>
+                              <FieldRow label="Home Phone">
+                                <input type="tel" value={details.custodialAddress.homePhone} onChange={(e) => updateCustodialAddressField({ homePhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                              </FieldRow>
+                              <FieldRow label="Cell Phone" required>
+                                <input type="tel" value={details.custodialAddress.cellPhone} onChange={(e) => updateCustodialAddressField({ cellPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                              </FieldRow>
+                              <FieldRow label="Emergency Phone">
+                                <input type="tel" value={details.custodialAddress.emergencyPhone} onChange={(e) => updateCustodialAddressField({ emergencyPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                              </FieldRow>
+                              <FieldRow label="Email" required>
+                                <input type="email" value={details.custodialAddress.email} onChange={(e) => updateCustodialAddressField({ email: e.target.value })} />
+                              </FieldRow>
+                            </div>
+
+                            <FormBar title="Employment" />
+                            <div className="field-table">
+                              <FieldRow label="Currently Employed" required>
+                                <TriRadio
+                                  name="custodial-employed-edit"
+                                  value={details.custodialEmployment.currentlyEmployed}
+                                  onChange={(v) => updateCustodialEmployment({ currentlyEmployed: v as EmploymentInfo['currentlyEmployed'] })}
+                                  options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+                                />
+                              </FieldRow>
+                              {details.custodialEmployment.currentlyEmployed === 'yes' && (
+                                <>
+                                  <FieldRow label="Employer Name">
+                                    <input type="text" value={details.custodialEmployment.employerName} onChange={(e) => updateCustodialEmployment({ employerName: e.target.value })} />
+                                  </FieldRow>
+                                  <FieldRow label="Work Phone">
+                                    <input type="tel" value={details.custodialEmployment.workPhone} onChange={(e) => updateCustodialEmployment({ workPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                                  </FieldRow>
+                                </>
+                              )}
+                            </div>
                           </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.receivingTanf')}</span>
-                            <span className="rf-value">{form.receivesPublicAssistance === 'yes' ? t('apply.common.yes') : t('apply.common.no')}</span>
+                        ) : (
+                          <div className="review-section-body review-data-grid">
+                            <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.custodialName.firstName, details.custodialName.middleName, details.custodialName.lastName, details.custodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{details.custodialName.gender ? details.custodialName.gender.toUpperCase() : '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{details.custodialName.ssn || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Birth Date</span><span className="review-item-value">{details.custodialName.birthDate || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.custodialName.maritalStatus || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Maiden Name</span><span className="review-item-value">{details.custodialName.maidenName || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Spouse Name</span><span className="review-item-value">{details.custodialName.spouseName || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Residential Address</span><span className="review-item-value">{[details.custodialAddress.residential.line1, details.custodialAddress.residential.line2, details.custodialAddress.residential.city, details.custodialAddress.residential.state, details.custodialAddress.residential.zip].filter(Boolean).join(', ') || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Mailing Address</span><span className="review-item-value">{[details.custodialAddress.mailing.line1, details.custodialAddress.mailing.line2, details.custodialAddress.mailing.city, details.custodialAddress.mailing.state, details.custodialAddress.mailing.zip].filter(Boolean).join(', ') || 'Same as residential'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Cell Phone</span><span className="review-item-value">{details.custodialAddress.cellPhone || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Home Phone</span><span className="review-item-value">{details.custodialAddress.homePhone || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Email</span><span className="review-item-value">{details.custodialAddress.email || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Employment Status</span><span className="review-item-value">{details.custodialEmployment.currentlyEmployed === 'yes' ? `Employed at ${details.custodialEmployment.employerName || '—'}` : 'Not Employed'}</span></div>
                           </div>
-                        </div>
+                        )}
                       </div>
 
+                      {/* SECTION 3: HOUSEHOLD INFORMATION */}
                       <div className="review-section">
                         <div className="review-section-header">
-                          <h3>{t(STEP_LABEL_KEYS.household.label)}</h3>
-                          <button type="button" className="review-edit-link" onClick={() => goToStep(5)}>{t('review.edit')}</button>
+                          <h3>Household Information</h3>
+                          {editingSection === 'household-info' ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Cancel</button>
+                              <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={saveEditingSection}>Save</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="review-edit-link" onClick={() => startEditingSection('household-info')}>{t('review.edit')}</button>
+                          )}
                         </div>
-                        <div className="review-section-body">
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.fullName')}</span>
-                            <span className="rf-value">{form.fullName || '—'}</span>
+                        {editingSection === 'household-info' ? (
+                          <div className="review-edit-form-container">
+                            <div className="field-table">
+                              <FieldRow label="Household Size" required>
+                                <input type="number" min={1} value={form.householdSize} onChange={(e) => setForm((p) => ({ ...p, householdSize: e.target.value }))} placeholder="e.g. 3" />
+                              </FieldRow>
+                              <FieldRow label="Monthly Income" required>
+                                <input type="number" min={0} value={form.monthlyIncome} onChange={(e) => setForm((p) => ({ ...p, monthlyIncome: e.target.value }))} placeholder="e.g. 2400" />
+                              </FieldRow>
+                              <FieldRow label="Preferred Provider">
+                                <input type="text" value={form.providerName} onChange={(e) => setForm((p) => ({ ...p, providerName: e.target.value }))} placeholder="Facility or provider name, if known" />
+                              </FieldRow>
+                            </div>
                           </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.dob')}</span>
-                            <span className="rf-value">{form.dob || '—'}</span>
+                        ) : (
+                          <div className="review-section-body review-data-grid">
+                            <div className="review-data-item"><span className="review-item-label">Household Size</span><span className="review-item-value">{form.householdSize || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Monthly Income</span><span className="review-item-value">{form.monthlyIncome ? `$${form.monthlyIncome}` : '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Preferred Provider</span><span className="review-item-value">{form.providerName || '—'}</span></div>
                           </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.phone')}</span>
-                            <span className="rf-value">{form.phone || '—'}</span>
+                        )}
+                      </div>
+
+                      {/* SECTION 4: CHILDREN DETAILS */}
+                      {form.assistanceType === 'full' && (
+                        <div className="review-section">
+                          <div className="review-section-header">
+                            <h3>Children Associated with Request</h3>
+                            {editingSection === 'children-info' ? (
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Done</button>
+                            ) : (
+                              <button type="button" className="review-edit-link" onClick={() => startEditingSection('children-info')}>{t('review.edit')}</button>
+                            )}
                           </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.email')}</span>
-                            <span className="rf-value">{form.email || '—'}</span>
-                          </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.address')}</span>
-                            <span className="rf-value">{form.address || '—'}</span>
-                          </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.householdSize')}</span>
-                            <span className="rf-value">{form.householdSize || '—'}</span>
-                          </div>
-                          <div className="review-field">
-                            <span className="rf-label">{t('review.monthlyIncome')}</span>
-                            <span className="rf-value">{form.monthlyIncome ? `$${form.monthlyIncome}` : '—'}</span>
-                          </div>
-                          {form.assistanceType === 'full' && (
-                            <div className="review-field">
-                              <span className="rf-label">{t('review.children')}</span>
-                              <span className="rf-value">
-                                {form.children.map((c) => [c.firstName, c.lastName].filter(Boolean).join(' ')).filter(Boolean).join(', ') || '—'}
-                              </span>
+                          {editingSection === 'children-info' ? (
+                            <div className="review-edit-form-container">
+                              {showChildForm ? (
+                                <div className="sof-section-container animate-fade-in" style={{ padding: '16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+                                  <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--primary)' }}>
+                                    {editingChildId ? 'Edit Child Details' : 'Add New Child'}
+                                  </h4>
+                                  
+                                  <FormBar title="Name" />
+                                  <div className="ocf-three-col-grid">
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> First Name:</label>
+                                      <input type="text" value={childDraft.firstName} onChange={(e) => updateChildDraft({ firstName: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label>Middle Name:</label>
+                                      <input type="text" value={childDraft.middleName} onChange={(e) => updateChildDraft({ middleName: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Last Name:</label>
+                                      <input type="text" value={childDraft.lastName} onChange={(e) => updateChildDraft({ lastName: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label>Suffix:</label>
+                                      <input type="text" value={childDraft.suffix} onChange={(e) => updateChildDraft({ suffix: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label>Social Security Number:</label>
+                                      <input type="text" value={childDraft.ssn} onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Gender:</label>
+                                      <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                                        <label style={{ cursor: 'pointer', fontSize: '13.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                          <input type="radio" name="child-gender-edit" checked={childDraft.gender === 'male'} onChange={() => updateChildDraft({ gender: 'male' })} /> Male
+                                        </label>
+                                        <label style={{ cursor: 'pointer', fontSize: '13.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                          <input type="radio" name="child-gender-edit" checked={childDraft.gender === 'female'} onChange={() => updateChildDraft({ gender: 'female' })} /> Female
+                                        </label>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <FormBar title="Birth" />
+                                  <div className="ocf-three-col-grid">
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Birth Date:</label>
+                                      <input type="date" value={childDraft.birthDate} onChange={(e) => updateChildDraft({ birthDate: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Birth City:</label>
+                                      <input type="text" value={childDraft.birthCity} onChange={(e) => updateChildDraft({ birthCity: e.target.value })} className="modern-input" />
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Birth State:</label>
+                                      <select value={childDraft.birthState} onChange={(e) => updateChildDraft({ birthState: e.target.value })} className="modern-input">
+                                        <option value="">PLEASE SELECT</option>
+                                        {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+
+                                  <FormBar title="Relationship & Paternity" />
+                                  <div className="ocf-three-col-grid">
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Relationship to Custodian:</label>
+                                      <select value={childDraft.relationship} onChange={(e) => updateChildDraft({ relationship: e.target.value })} className="modern-input">
+                                        <option value="">PLEASE SELECT</option>
+                                        {RELATIONSHIP_OPTIONS.map((r) => <option key={r} value={r.toUpperCase()}>{r.toUpperCase()}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> State of Residence:</label>
+                                      <select value={childDraft.state} onChange={(e) => updateChildDraft({ state: e.target.value })} className="modern-input">
+                                        <option value="">PLEASE SELECT</option>
+                                        {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                      </select>
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label><span className="req">*</span> Paternity Established:</label>
+                                      <div style={{ display: 'flex', gap: 12, marginTop: 8 }}>
+                                        <label style={{ cursor: 'pointer', fontSize: '13.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                          <input type="radio" name="child-paternity-edit" checked={childDraft.paternityEstablished === 'yes'} onChange={() => updateChildDraft({ paternityEstablished: 'yes' })} /> Yes
+                                        </label>
+                                        <label style={{ cursor: 'pointer', fontSize: '13.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                          <input type="radio" name="child-paternity-edit" checked={childDraft.paternityEstablished === 'no'} onChange={() => updateChildDraft({ paternityEstablished: 'no' })} /> No
+                                        </label>
+                                        <label style={{ cursor: 'pointer', fontSize: '13.5px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                                          <input type="radio" name="child-paternity-edit" checked={childDraft.paternityEstablished === 'unknown'} onChange={() => updateChildDraft({ paternityEstablished: 'unknown' })} /> Unknown
+                                        </label>
+                                      </div>
+                                    </div>
+                                    <div className="modern-field-group">
+                                      <label>Paternity Date:</label>
+                                      <input type="date" value={childDraft.paternityDate} onChange={(e) => updateChildDraft({ paternityDate: e.target.value })} className="modern-input" />
+                                    </div>
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                    <button type="button" className="apply-btn apply-btn-outline" onClick={() => { setShowChildForm(false); setEditingChildId(null); setChildDraft(EMPTY_CHILD); }}>Cancel</button>
+                                    <button type="button" className="apply-btn apply-btn-primary" onClick={editingChildId ? handleUpdateChild : handleAddChild}>{editingChildId ? 'Update Child' : 'Add Child'}</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                                    <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setChildDraft(EMPTY_CHILD); setEditingChildId(null); setShowChildForm(true); }}>
+                                      <Plus size={14} strokeWidth={2.5} /> Add Child
+                                    </button>
+                                  </div>
+                                  
+                                  {form.children.length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-secondary)' }}>No children added yet.</div>
+                                  ) : (
+                                    <div className="sof-table-container">
+                                      <table className="sof-minimal-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Name</th>
+                                            <th>DOB</th>
+                                            <th>Gender</th>
+                                            <th>Relationship</th>
+                                            <th style={{ width: 120, textAlign: 'center' }}>Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {form.children.map((child) => (
+                                            <tr key={child.id}>
+                                              <td style={{ fontWeight: 600 }}>{[child.firstName, child.lastName].filter(Boolean).join(' ')}</td>
+                                              <td>{child.birthDate}</td>
+                                              <td>{child.gender ? child.gender.toUpperCase() : '—'}</td>
+                                              <td>{child.relationship}</td>
+                                              <td>
+                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                                  <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '2px 8px', fontSize: '11px', height: '24px' }} onClick={() => startEditingChild(child)}>Edit</button>
+                                                  <button type="button" className="sof-table-remove-btn" onClick={() => removeChild(child.id)}><X size={14} /></button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="review-section-body" style={{ display: 'block', padding: '14px 18px' }}>
+                              {form.children.length === 0 ? (
+                                <span style={{ color: 'var(--text-secondary)' }}>No children added.</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                  {form.children.map((child, idx) => (
+                                    <div key={child.id} style={{ borderBottom: idx < form.children.length - 1 ? '1px dashed #e2e8f0' : 'none', paddingBottom: idx < form.children.length - 1 ? 16 : 0 }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary)', fontSize: '14.5px', fontWeight: 700 }}>
+                                        Child #{idx + 1}: {[child.firstName, child.lastName].filter(Boolean).join(' ')}
+                                      </h4>
+                                      <div className="review-data-grid">
+                                        <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{child.gender ? child.gender.toUpperCase() : '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Birth Date / Place</span><span className="review-item-value">{child.birthDate} ({child.birthCity || '—'}, {child.birthState || '—'})</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{child.ssn || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Relationship</span><span className="review-item-value">{child.relationship || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">State</span><span className="review-item-value">{child.state || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Paternity Established</span><span className="review-item-value">{child.paternityEstablished ? child.paternityEstablished.toUpperCase() : '—'} {child.paternityDate ? `on ${child.paternityDate}` : ''}</span></div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
+                      )}
+
+                      {/* SECTION 5: NONCUSTODIAL PARENT PROFILE */}
+                      {form.assistanceType === 'full' && (
+                        <div className="review-section">
+                          <div className="review-section-header">
+                            <h3>Non-Custodial Parent Profile</h3>
+                            {editingSection === 'noncustodial-profile' ? (
+                              <div style={{ display: 'flex', gap: 8 }}>
+                                <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Cancel</button>
+                                <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={saveEditingSection}>Save</button>
+                              </div>
+                            ) : (
+                              <button type="button" className="review-edit-link" onClick={() => startEditingSection('noncustodial-profile')}>{t('review.edit')}</button>
+                            )}
+                          </div>
+                          {editingSection === 'noncustodial-profile' ? (
+                            <div className="review-edit-form-container">
+                              <FormBar title="Name & Birth" />
+                              <div className="field-table" style={{ marginBottom: 16 }}>
+                                <FieldRow label="First Name" required>
+                                  <input type="text" value={details.noncustodialName.firstName} onChange={(e) => updateNoncustodialName({ firstName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Middle Name">
+                                  <input type="text" value={details.noncustodialName.middleName} onChange={(e) => updateNoncustodialName({ middleName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Last Name" required>
+                                  <input type="text" value={details.noncustodialName.lastName} onChange={(e) => updateNoncustodialName({ lastName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Suffix">
+                                  <input type="text" value={details.noncustodialName.suffix} onChange={(e) => updateNoncustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
+                                </FieldRow>
+                                <FieldRow label="SSN">
+                                  <input type="text" value={details.noncustodialName.ssn} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                                </FieldRow>
+                                <FieldRow label="Gender">
+                                  <TriRadio
+                                    name="noncustodial-gender-edit"
+                                    value={details.noncustodialName.gender}
+                                    onChange={(v) => updateNoncustodialName({ gender: v as PersonNameInfo['gender'] })}
+                                    options={[{ value: 'female', label: 'Female' }, { value: 'male', label: 'Male' }]}
+                                  />
+                                </FieldRow>
+                                <FieldRow label="Birth Date">
+                                  <input type="date" value={details.noncustodialName.birthDate} onChange={(e) => updateNoncustodialName({ birthDate: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Birth City">
+                                  <input type="text" value={details.noncustodialName.birthCity} onChange={(e) => updateNoncustodialName({ birthCity: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Birth State">
+                                  <select value={details.noncustodialName.birthState} onChange={(e) => updateNoncustodialName({ birthState: e.target.value })}>
+                                    <option value="">PLEASE SELECT</option>
+                                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Marital Status">
+                                  <select value={details.noncustodialName.maritalStatus} onChange={(e) => updateNoncustodialName({ maritalStatus: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Maiden Name">
+                                  <input type="text" value={details.noncustodialName.maidenName} onChange={(e) => updateNoncustodialName({ maidenName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Spouse Name">
+                                  <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Date Married">
+                                  <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
+                                </FieldRow>
+                              </div>
+
+                              <FormBar title="Physical Description" />
+                              <div className="field-table" style={{ marginBottom: 16 }}>
+                                <FieldRow label="Hair Color">
+                                  <select value={details.noncustodialDescription.hair} onChange={(e) => updateNoncustodialDescription({ hair: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {HAIR_OPTIONS.map((h) => <option key={h} value={h}>{h}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Eye Color">
+                                  <select value={details.noncustodialDescription.eyes} onChange={(e) => updateNoncustodialDescription({ eyes: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {EYE_OPTIONS.map((e) => <option key={e} value={e}>{e}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Height">
+                                  <div style={{ display: 'flex', gap: 12 }}>
+                                    <select value={details.noncustodialDescription.heightFt} onChange={(e) => updateNoncustodialDescription({ heightFt: e.target.value })} style={{ flex: 1 }}>
+                                      <option value="">Ft</option>
+                                      {HEIGHT_FEET_OPTIONS.map((f) => <option key={f} value={f}>{f} ft</option>)}
+                                    </select>
+                                    <select value={details.noncustodialDescription.heightIn} onChange={(e) => updateNoncustodialDescription({ heightIn: e.target.value })} style={{ flex: 1 }}>
+                                      <option value="">In</option>
+                                      {HEIGHT_INCH_OPTIONS.map((i) => <option key={i} value={i}>{i} in</option>)}
+                                    </select>
+                                  </div>
+                                </FieldRow>
+                                <FieldRow label="Weight (lbs)">
+                                  <input type="number" value={details.noncustodialDescription.weight} onChange={(e) => updateNoncustodialDescription({ weight: e.target.value })} placeholder="lbs" />
+                                </FieldRow>
+                                <FieldRow label="Race">
+                                  <select value={details.noncustodialDescription.race} onChange={(e) => updateNoncustodialDescription({ race: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {RACE_OPTIONS.map((r) => <option key={r} value={r}>{r}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Nickname / Aliases">
+                                  <input type="text" value={details.noncustodialDescription.nickname} onChange={(e) => updateNoncustodialDescription({ nickname: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Other Features">
+                                  <input type="text" value={details.noncustodialDescription.otherFeatures} onChange={(e) => updateNoncustodialDescription({ otherFeatures: e.target.value })} placeholder="Scars, tattoos, glasses, etc." />
+                                </FieldRow>
+                              </div>
+
+                              <FormBar title="Residential Address" />
+                              <div className="field-table" style={{ marginBottom: 16 }}>
+                                <FieldRow label="Address Line 1">
+                                  <input type="text" value={details.noncustodialAddress.residential.line1} onChange={(e) => updateNoncustodialAddressBlock('residential', { line1: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Address Line 2">
+                                  <input type="text" value={details.noncustodialAddress.residential.line2} onChange={(e) => updateNoncustodialAddressBlock('residential', { line2: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="City">
+                                  <input type="text" value={details.noncustodialAddress.residential.city} onChange={(e) => updateNoncustodialAddressBlock('residential', { city: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="State">
+                                  <select value={details.noncustodialAddress.residential.state} onChange={(e) => updateNoncustodialAddressBlock('residential', { state: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Zip Code">
+                                  <input type="text" value={details.noncustodialAddress.residential.zip} onChange={(e) => updateNoncustodialAddressBlock('residential', { zip: e.target.value })} maxLength={10} />
+                                </FieldRow>
+                              </div>
+
+                              <FormBar title="Mailing Address" />
+                              <div className="field-table" style={{ marginBottom: 16 }}>
+                                <FieldRow label="Address Line 1">
+                                  <input type="text" value={details.noncustodialAddress.mailing.line1} onChange={(e) => updateNoncustodialAddressBlock('mailing', { line1: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Address Line 2">
+                                  <input type="text" value={details.noncustodialAddress.mailing.line2} onChange={(e) => updateNoncustodialAddressBlock('mailing', { line2: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="City">
+                                  <input type="text" value={details.noncustodialAddress.mailing.city} onChange={(e) => updateNoncustodialAddressBlock('mailing', { city: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="State">
+                                  <select value={details.noncustodialAddress.mailing.state} onChange={(e) => updateNoncustodialAddressBlock('mailing', { state: e.target.value })}>
+                                    <option value="">Please Select</option>
+                                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </select>
+                                </FieldRow>
+                                <FieldRow label="Zip Code">
+                                  <input type="text" value={details.noncustodialAddress.mailing.zip} onChange={(e) => updateNoncustodialAddressBlock('mailing', { zip: e.target.value })} maxLength={10} />
+                                </FieldRow>
+                              </div>
+
+                              <FormBar title="Contact Details & Employment" />
+                              <div className="field-table" style={{ marginBottom: 16 }}>
+                                <FieldRow label="Home Phone">
+                                  <input type="tel" value={details.noncustodialAddress.homePhone} onChange={(e) => updateNoncustodialAddressField({ homePhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                                </FieldRow>
+                                <FieldRow label="Cell Phone">
+                                  <input type="tel" value={details.noncustodialAddress.cellPhone} onChange={(e) => updateNoncustodialAddressField({ cellPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                                </FieldRow>
+                                <FieldRow label="Email">
+                                  <input type="email" value={details.noncustodialAddress.email} onChange={(e) => updateNoncustodialAddressField({ email: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label="Currently Employed">
+                                  <TriRadio
+                                    name="noncustodial-employed-edit"
+                                    value={details.noncustodialEmployment.currentlyEmployed}
+                                    onChange={(v) => updateNoncustodialEmployment({ currentlyEmployed: v as EmploymentInfo['currentlyEmployed'] })}
+                                    options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]}
+                                  />
+                                </FieldRow>
+                                {details.noncustodialEmployment.currentlyEmployed === 'yes' && (
+                                  <>
+                                    <FieldRow label="Employer Name">
+                                      <input type="text" value={details.noncustodialEmployment.employerName} onChange={(e) => updateNoncustodialEmployment({ employerName: e.target.value })} />
+                                    </FieldRow>
+                                    <FieldRow label="Work Phone">
+                                      <input type="tel" value={details.noncustodialEmployment.workPhone} onChange={(e) => updateNoncustodialEmployment({ workPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                                    </FieldRow>
+                                  </>
+                                )}
+                              </div>
+
+                              <FormBar title="Income Details" />
+                              <div className="income-list" style={{ marginBottom: 16 }}>
+                                {INCOME_ITEM_KEYS.map(({ key, labelKey }) => {
+                                  const item = details.noncustodialIncome[key];
+                                  return (
+                                    <div className="income-row" key={key} style={{ padding: '8px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                      <div className="income-row-question" style={{ fontSize: '13.5px', fontWeight: 600 }}>{t(labelKey)}</div>
+                                      <TriRadio
+                                        name={`income-${key}-edit`}
+                                        value={item.has}
+                                        onChange={(v) => updateIncomeItem(key, { has: v as IncomeItem['has'] })}
+                                        options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }, { value: 'unknown', label: 'Unknown' }]}
+                                      />
+                                      {item.has === 'yes' && (
+                                        <div className="income-row-amount" style={{ marginTop: 8 }}>
+                                          <input
+                                            type="number"
+                                            min={0}
+                                            value={item.amount}
+                                            onChange={(e) => updateIncomeItem(key, { amount: e.target.value })}
+                                            placeholder="0.00"
+                                            style={{ width: '100px', padding: '4px 8px', borderRadius: '4px', border: '1px solid #cbd5e1' }}
+                                          />
+                                          <span style={{ marginLeft: 8, fontSize: '13px', color: 'var(--text-secondary)' }}>/ month</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="income-total-row" style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', fontWeight: 700, borderTop: '2px solid #e2e8f0', marginBottom: 16 }}>
+                                <span>Total Estimated Income:</span>
+                                <span>${incomeTotal.toFixed(2)}/mo</span>
+                              </div>
+
+                              <FormBar title="Relatives (Mother & Father)" />
+                              <div className="ocf-two-col-grid" style={{ gap: 20 }}>
+                                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 6 }}>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', color: 'var(--primary)' }}>Mother&apos;s Info</h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    <input type="text" placeholder="First Name" value={details.noncustodialMother.firstName} onChange={(e) => updateMother({ firstName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Middle Name" value={details.noncustodialMother.middleName} onChange={(e) => updateMother({ middleName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Last Name" value={details.noncustodialMother.lastName} onChange={(e) => updateMother({ lastName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Maiden Name" value={details.noncustodialMother.maidenName} onChange={(e) => updateMother({ maidenName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Birth City" value={details.noncustodialMother.birthCity} onChange={(e) => updateMother({ birthCity: e.target.value })} className="modern-input" />
+                                    <select value={details.noncustodialMother.birthState} onChange={(e) => updateMother({ birthState: e.target.value })} className="modern-input">
+                                      <option value="">Birth State</option>
+                                      {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: '13px', fontWeight: 600 }}>Deceased?</span>
+                                      <TriRadio
+                                        name="mother-deceased-edit"
+                                        value={details.noncustodialMother.deceased}
+                                        onChange={(v) => updateMother({ deceased: v as RelativeInfo['deceased'] })}
+                                        options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div style={{ background: '#f8fafc', padding: 12, borderRadius: 6 }}>
+                                  <h4 style={{ margin: '0 0 10px 0', fontSize: '13.5px', color: 'var(--primary)' }}>Father&apos;s Info</h4>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    <input type="text" placeholder="First Name" value={details.noncustodialFather.firstName} onChange={(e) => updateFather({ firstName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Middle Name" value={details.noncustodialFather.middleName} onChange={(e) => updateFather({ middleName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Last Name" value={details.noncustodialFather.lastName} onChange={(e) => updateFather({ lastName: e.target.value })} className="modern-input" />
+                                    <input type="text" placeholder="Birth City" value={details.noncustodialFather.birthCity} onChange={(e) => updateFather({ birthCity: e.target.value })} className="modern-input" />
+                                    <select value={details.noncustodialFather.birthState} onChange={(e) => updateFather({ birthState: e.target.value })} className="modern-input">
+                                      <option value="">Birth State</option>
+                                      {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                    </select>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                                      <span style={{ fontSize: '13px', fontWeight: 600 }}>Deceased?</span>
+                                      <TriRadio
+                                        name="father-deceased-edit"
+                                        value={details.noncustodialFather.deceased}
+                                        onChange={(v) => updateFather({ deceased: v as RelativeInfo['deceased'] })}
+                                        options={[{ value: 'yes', label: 'Yes' }, { value: 'no', label: 'No' }]}
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="review-section-body review-data-grid">
+                              <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.noncustodialName.firstName, details.noncustodialName.middleName, details.noncustodialName.lastName, details.noncustodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{details.noncustodialName.ssn || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Birth details</span><span className="review-item-value">{details.noncustodialName.birthDate || '—'} ({[details.noncustodialName.birthCity, details.noncustodialName.birthState].filter(Boolean).join(', ') || '—'})</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.noncustodialName.maritalStatus || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Physical Description</span><span className="review-item-value">
+                                {[
+                                  details.noncustodialDescription.hair ? `Hair: ${details.noncustodialDescription.hair}` : '',
+                                  details.noncustodialDescription.eyes ? `Eyes: ${details.noncustodialDescription.eyes}` : '',
+                                  details.noncustodialDescription.heightFt ? `Height: ${details.noncustodialDescription.heightFt}ft ${details.noncustodialDescription.heightIn || 0}in` : '',
+                                  details.noncustodialDescription.weight ? `Weight: ${details.noncustodialDescription.weight} lbs` : '',
+                                  details.noncustodialDescription.race ? `Race: ${details.noncustodialDescription.race}` : ''
+                                ].filter(Boolean).join(', ') || '—'}
+                              </span></div>
+                              <div className="review-data-item"><span className="review-item-label">Residential Address</span><span className="review-item-value">{[details.noncustodialAddress.residential.line1, details.noncustodialAddress.residential.line2, details.noncustodialAddress.residential.city, details.noncustodialAddress.residential.state, details.noncustodialAddress.residential.zip].filter(Boolean).join(', ') || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Contact Details</span><span className="review-item-value">{[details.noncustodialAddress.cellPhone ? `Cell: ${details.noncustodialAddress.cellPhone}` : '', details.noncustodialAddress.homePhone ? `Home: ${details.noncustodialAddress.homePhone}` : '', details.noncustodialAddress.email ? `Email: ${details.noncustodialAddress.email}` : ''].filter(Boolean).join(', ') || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Employment</span><span className="review-item-value">{details.noncustodialEmployment.currentlyEmployed === 'yes' ? `Employed at ${details.noncustodialEmployment.employerName || '—'}` : details.noncustodialEmployment.currentlyEmployed === 'no' ? 'Not Employed' : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Income Sources</span><span className="review-item-value">
+                                {Object.entries(details.noncustodialIncome).filter(([_, item]) => item.has === 'yes').map(([key, item]) => `${key.replace(/([A-Z])/g, ' $1')}: $${item.amount}/mo`).join(', ') || 'None reported'}
+                              </span></div>
+                              <div className="review-data-item"><span className="review-item-label">Estimated Monthly Income</span><span className="review-item-value">${incomeTotal.toFixed(2)}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Mother&apos;s Details</span><span className="review-item-value">{[details.noncustodialMother.firstName, details.noncustodialMother.lastName].filter(Boolean).join(' ') ? `${[details.noncustodialMother.firstName, details.noncustodialMother.lastName].filter(Boolean).join(' ')} ${details.noncustodialMother.deceased === 'yes' ? '(Deceased)' : ''}` : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Father&apos;s Details</span><span className="review-item-value">{[details.noncustodialFather.firstName, details.noncustodialFather.lastName].filter(Boolean).join(' ') ? `${[details.noncustodialFather.firstName, details.noncustodialFather.lastName].filter(Boolean).join(' ')} ${details.noncustodialFather.deceased === 'yes' ? '(Deceased)' : ''}` : '—'}</span></div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* SECTION 6: SUPPORT ORDERS */}
+                      {form.assistanceType === 'full' && (
+                        <div className="review-section">
+                          <div className="review-section-header">
+                            <h3>Existing Support Orders</h3>
+                            {editingSection === 'support-orders' ? (
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Done</button>
+                            ) : (
+                              <button type="button" className="review-edit-link" onClick={() => startEditingSection('support-orders')}>{t('review.edit')}</button>
+                            )}
+                          </div>
+                          {editingSection === 'support-orders' ? (
+                            <div className="review-edit-form-container">
+                              {showSupportOrderForm ? (
+                                <div className="sof-section-container animate-fade-in" style={{ padding: '16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+                                  <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--primary)' }}>
+                                    {editingSupportOrderId ? 'Edit Support Order Details' : 'Add New Support Order'}
+                                  </h4>
+                                  
+                                  <div className="field-table">
+                                    <FieldRow label="Order Type" required>
+                                      <select value={supportOrderDraft.orderType} onChange={(e) => setSupportOrderDraft(p => ({ ...p, orderType: e.target.value }))}>
+                                        <option value="">PLEASE SELECT</option>
+                                        <option value="Child Support">Child Support</option>
+                                        <option value="Spousal Support">Spousal Support</option>
+                                        <option value="Medical Support">Medical Support</option>
+                                      </select>
+                                    </FieldRow>
+                                    <FieldRow label="Order Number" required>
+                                      <input type="text" value={supportOrderDraft.orderNumber} onChange={(e) => setSupportOrderDraft(p => ({ ...p, orderNumber: e.target.value }))} />
+                                    </FieldRow>
+                                    <FieldRow label="State Filed" required>
+                                      <select value={supportOrderDraft.stateFiled} onChange={(e) => setSupportOrderDraft(p => ({ ...p, stateFiled: e.target.value }))}>
+                                        <option value="">PLEASE SELECT</option>
+                                        {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                      </select>
+                                    </FieldRow>
+                                    <FieldRow label="Date Filed" required>
+                                      <input type="date" value={supportOrderDraft.dateFiled} onChange={(e) => setSupportOrderDraft(p => ({ ...p, dateFiled: e.target.value }))} />
+                                    </FieldRow>
+                                    <FieldRow label="Amount" required>
+                                      <input type="number" min={0} value={supportOrderDraft.amount} onChange={(e) => setSupportOrderDraft(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" />
+                                    </FieldRow>
+                                    <FieldRow label="Frequency" required>
+                                      <select value={supportOrderDraft.frequency} onChange={(e) => setSupportOrderDraft(p => ({ ...p, frequency: e.target.value }))}>
+                                        <option value="">PLEASE SELECT</option>
+                                        <option value="Weekly">Weekly</option>
+                                        <option value="Bi-weekly">Bi-weekly</option>
+                                        <option value="Monthly">Monthly</option>
+                                      </select>
+                                    </FieldRow>
+                                    <FieldRow label="Start Date" required>
+                                      <input type="date" value={supportOrderDraft.startDate} onChange={(e) => setSupportOrderDraft(p => ({ ...p, startDate: e.target.value }))} />
+                                    </FieldRow>
+                                    <FieldRow label="End Date">
+                                      <input type="date" value={supportOrderDraft.endDate} onChange={(e) => setSupportOrderDraft(p => ({ ...p, endDate: e.target.value }))} />
+                                    </FieldRow>
+                                  </div>
+
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                    <button type="button" className="apply-btn apply-btn-outline" onClick={() => { setShowSupportOrderForm(false); setEditingSupportOrderId(null); setSupportOrderDraft(EMPTY_SUPPORT_ORDER); }}>Cancel</button>
+                                    <button type="button" className="apply-btn apply-btn-primary" onClick={editingSupportOrderId ? handleUpdateSupportOrder : handleSaveSupportOrder}>{editingSupportOrderId ? 'Update Order' : 'Add Order'}</button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <>
+                                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                                    <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setSupportOrderDraft(EMPTY_SUPPORT_ORDER); setEditingSupportOrderId(null); setShowSupportOrderForm(true); }}>
+                                      <Plus size={14} strokeWidth={2.5} /> Add Support Order
+                                    </button>
+                                  </div>
+                                  
+                                  {(!form.supportOrders || form.supportOrders.length === 0) ? (
+                                    <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-secondary)' }}>No support orders added.</div>
+                                  ) : (
+                                    <div className="sof-table-container">
+                                      <table className="sof-minimal-table">
+                                        <thead>
+                                          <tr>
+                                            <th>Type</th>
+                                            <th>Order #</th>
+                                            <th>State</th>
+                                            <th>Amount</th>
+                                            <th>Frequency</th>
+                                            <th style={{ width: 120, textAlign: 'center' }}>Actions</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {form.supportOrders.map((order) => (
+                                            <tr key={order.id}>
+                                              <td style={{ fontWeight: 600 }}>{order.orderType}</td>
+                                              <td>{order.orderNumber}</td>
+                                              <td>{order.stateFiled}</td>
+                                              <td>${order.amount}</td>
+                                              <td>{order.frequency}</td>
+                                              <td>
+                                                <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                                  <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '2px 8px', fontSize: '11px', height: '24px' }} onClick={() => startEditingSupportOrder(order)}>Edit</button>
+                                                  <button type="button" className="sof-table-remove-btn" onClick={() => removeSupportOrder(order.id)}><X size={14} /></button>
+                                                </div>
+                                              </td>
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="review-section-body" style={{ display: 'block', padding: '14px 18px' }}>
+                              {(!form.supportOrders || form.supportOrders.length === 0) ? (
+                                <span style={{ color: 'var(--text-secondary)' }}>No support orders added.</span>
+                              ) : (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                  {form.supportOrders.map((order, idx) => (
+                                    <div key={order.id} style={{ borderBottom: idx < form.supportOrders.length - 1 ? '1px dashed #e2e8f0' : 'none', paddingBottom: idx < form.supportOrders.length - 1 ? 16 : 0 }}>
+                                      <h4 style={{ margin: '0 0 10px 0', color: 'var(--primary)', fontSize: '14.5px', fontWeight: 700 }}>
+                                        Order #{idx + 1}: {order.orderType} (Order #{order.orderNumber})
+                                      </h4>
+                                      <div className="review-data-grid">
+                                        <div className="review-data-item"><span className="review-item-label">State Filed</span><span className="review-item-value">{order.stateFiled || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Date Filed</span><span className="review-item-value">{order.dateFiled || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Payment</span><span className="review-item-value">${order.amount} ({order.frequency})</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Dates</span><span className="review-item-value">{order.startDate} to {order.endDate || 'Present'}</span></div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* SECTION 7: OTHER CHILDREN */}
+                      <div className="review-section">
+                        <div className="review-section-header">
+                          <h3>Other Children in Household</h3>
+                          {editingSection === 'other-children' ? (
+                            <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Done</button>
+                          ) : (
+                            <button type="button" className="review-edit-link" onClick={() => startEditingSection('other-children')}>{t('review.edit')}</button>
+                          )}
+                        </div>
+                        {editingSection === 'other-children' ? (
+                          <div className="review-edit-form-container">
+                            {showOtherChildForm ? (
+                              <div className="sof-section-container animate-fade-in" style={{ padding: '16px', background: '#fff', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
+                                <h4 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: 'var(--primary)' }}>
+                                  {editingOtherChildId ? 'Edit Child Details' : 'Add New Child'}
+                                </h4>
+                                
+                                <div className="field-table">
+                                  <FieldRow label="First Name" required>
+                                    <input type="text" value={otherChildDraft.firstName} onChange={(e) => setOtherChildDraft(p => ({ ...p, firstName: e.target.value }))} />
+                                  </FieldRow>
+                                  <FieldRow label="Middle Name">
+                                    <input type="text" value={otherChildDraft.middleName} onChange={(e) => setOtherChildDraft(p => ({ ...p, middleName: e.target.value }))} />
+                                  </FieldRow>
+                                  <FieldRow label="Last Name" required>
+                                    <input type="text" value={otherChildDraft.lastName} onChange={(e) => setOtherChildDraft(p => ({ ...p, lastName: e.target.value }))} />
+                                  </FieldRow>
+                                  <FieldRow label="Suffix">
+                                    <input type="text" value={otherChildDraft.suffix} onChange={(e) => setOtherChildDraft(p => ({ ...p, suffix: e.target.value }))} />
+                                  </FieldRow>
+                                  <FieldRow label="Birth Date" required>
+                                    <input type="date" value={otherChildDraft.birthDate} onChange={(e) => setOtherChildDraft(p => ({ ...p, birthDate: e.target.value }))} />
+                                  </FieldRow>
+                                </div>
+
+                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '20px', paddingTop: '12px', borderTop: '1px solid #cbd5e1' }}>
+                                  <button type="button" className="apply-btn apply-btn-outline" onClick={() => { setShowOtherChildForm(false); setEditingOtherChildId(null); setOtherChildDraft(EMPTY_OTHER_CHILD); }}>Cancel</button>
+                                  <button type="button" className="apply-btn apply-btn-primary" onClick={editingOtherChildId ? handleUpdateOtherChild : handleSaveOtherChild}>{editingOtherChildId ? 'Update Child' : 'Add Child'}</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                                  <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '6px 14px', fontSize: '13px' }} onClick={() => { setOtherChildDraft(EMPTY_OTHER_CHILD); setEditingOtherChildId(null); setShowOtherChildForm(true); }}>
+                                    <Plus size={14} strokeWidth={2.5} /> Add Child
+                                  </button>
+                                </div>
+                                
+                                {(!form.otherChildren || form.otherChildren.length === 0) ? (
+                                  <div style={{ textAlign: 'center', padding: '16px', color: 'var(--text-secondary)' }}>No other children added.</div>
+                                ) : (
+                                  <div className="sof-table-container">
+                                    <table className="sof-minimal-table">
+                                      <thead>
+                                        <tr>
+                                          <th>Name</th>
+                                          <th>Birth Date</th>
+                                          <th style={{ width: 120, textAlign: 'center' }}>Actions</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {form.otherChildren.map((child) => (
+                                          <tr key={child.id}>
+                                            <td style={{ fontWeight: 600 }}>{[child.firstName, child.lastName].filter(Boolean).join(' ')}</td>
+                                            <td>{child.birthDate}</td>
+                                            <td>
+                                              <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                                                <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '2px 8px', fontSize: '11px', height: '24px' }} onClick={() => startEditingOtherChild(child)}>Edit</button>
+                                                <button type="button" className="sof-table-remove-btn" onClick={() => removeOtherChild(child.id)}><X size={14} /></button>
+                                              </div>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="review-section-body review-data-grid">
+                            {(!form.otherChildren || form.otherChildren.length === 0) ? (
+                              <span style={{ color: 'var(--text-secondary)' }}>No other children in household.</span>
+                            ) : (
+                              form.otherChildren.map((child, idx) => (
+                                <div className="review-data-item" key={child.id || idx}>
+                                  <span className="review-item-label">Child #{idx + 1} Name</span>
+                                  <span className="review-item-value">{[child.firstName, child.lastName].filter(Boolean).join(' ')} (DOB: {child.birthDate})</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        )}
                       </div>
 
-                      <label className={`ack-item ${form.certify ? 'checked' : ''}`} style={{ marginTop: 8 }}>
+                      {/* SECTION 8: OTHER INFORMATION */}
+                      <div className="review-section">
+                        <div className="review-section-header">
+                          <h3>Other Information</h3>
+                          {editingSection === 'other-info' ? (
+                            <div style={{ display: 'flex', gap: 8 }}>
+                              <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={cancelEditingSection}>Cancel</button>
+                              <button type="button" className="apply-btn apply-btn-primary" style={{ padding: '4px 12px', fontSize: '12px' }} onClick={saveEditingSection}>Save</button>
+                            </div>
+                          ) : (
+                            <button type="button" className="review-edit-link" onClick={() => startEditingSection('other-info')}>{t('review.edit')}</button>
+                          )}
+                        </div>
+                        {editingSection === 'other-info' ? (
+                          <div className="review-edit-form-container">
+                            <textarea
+                              value={form.otherInformationText || ''}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val.length <= 4000) {
+                                  setForm(p => ({ ...p, otherInformationText: val }));
+                                }
+                              }}
+                              className="ocf-textarea"
+                              placeholder="Enter any other details here..."
+                              rows={8}
+                              style={{
+                                width: '100%',
+                                border: '1px solid var(--border-color)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '12px',
+                                outline: 'none',
+                                fontSize: '14px',
+                                resize: 'vertical'
+                              }}
+                            />
+                            <div style={{ color: 'var(--text-secondary)', fontSize: '13px', marginTop: 8 }}>
+                              {4000 - (form.otherInformationText || '').length} characters left
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="review-section-body" style={{ display: 'block', padding: '14px 18px' }}>
+                            <span className="review-item-label" style={{ marginBottom: 6 }}>Notes / Additional Comments</span>
+                            <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', color: 'var(--primary)', fontWeight: 500 }}>
+                              {form.otherInformationText || 'No additional comments provided.'}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <label className={`ack-item ${form.certify ? 'checked' : ''}`} style={{ marginTop: 16 }}>
                         <input
                           type="checkbox"
                           checked={form.certify}
@@ -3206,7 +4294,8 @@ export default function ApplyWizard() {
                         </span>
                       </label>
                     </>
-                  )}
+                  )
+}
                 </div>
               )}
             </div>

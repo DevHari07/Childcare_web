@@ -3319,6 +3319,43 @@ h3 {
   }
 }
 
+/* Review Edit Form Layouts */
+.review-edit-form-container {
+  background-color: #fafbfc;
+  border-top: 1px solid #e2e8f0;
+  padding: 24px;
+}
+.review-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e2e8f0;
+}
+.review-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px 24px;
+}
+.review-data-item {
+  display: flex;
+  flex-direction: column;
+}
+.review-item-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  color: #64748b;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+}
+.review-item-value {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--primary);
+  word-break: break-word;
+}
+
 /* Child Badge/Chip Styling */
 .child-badge-row {
   display: flex;
