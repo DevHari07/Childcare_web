@@ -578,6 +578,116 @@ export default function ApplyWizard() {
   const [showSignaturePage, setShowSignaturePage] = useState(false);
   const [soSworn, setSoSworn] = useState(false);
 
+  const [successMessage, setSuccessMessage] = useState('');
+  const [parsingPdf, setParsingPdf] = useState(false);
+
+  React.useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => {
+        setSuccessMessage('');
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setParsingPdf(true);
+    setError('');
+    setSuccessMessage('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('http://localhost:8000/api/extract', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.detail || "Failed to extract PDF details via OCR backend.");
+      }
+
+      const data = await response.json();
+      
+      const parsedName: PersonNameInfo = {
+        firstName: data.firstName || '',
+        middleName: data.middleName || '',
+        lastName: data.lastName || '',
+        suffix: data.suffix || '',
+        ssn: data.ssn || '',
+        gender: data.gender || '',
+        birthDate: data.birthDate || '',
+        birthCity: data.birthCity || '',
+        birthState: data.birthState || '',
+        maritalStatus: data.maritalStatus || '',
+        maidenName: data.maidenName || '',
+        spouseName: data.spouseName || '',
+        dateMarried: data.dateMarried || '',
+      };
+
+      const parsedAddr: PersonAddressInfo = {
+        knowsAddress: 'yes',
+        residential: {
+          line1: data.addressLine1 || '',
+          line2: data.addressLine2 || '',
+          city: data.city || '',
+          state: data.state || '',
+          zip: data.zip || '',
+          country: 'United States of America',
+        },
+        mailing: {
+          line1: '',
+          line2: '',
+          city: '',
+          state: '',
+          zip: '',
+          country: 'United States of America',
+        },
+        cellPhone: data.cellPhone || '',
+        homePhone: data.homePhone || '',
+        emergencyPhone: '',
+        email: data.email || '',
+      };
+
+      const parsedEmployment: EmploymentInfo = {
+        currentlyEmployed: data.currentlyEmployed || '',
+        employerName: data.employerName || '',
+        workPhone: data.workPhone || '',
+      };
+
+      setDetails((prev) => ({
+        ...prev,
+        custodialName: parsedName,
+        custodialAddress: parsedAddr,
+        custodialEmployment: parsedEmployment,
+      }));
+
+      syncFormFromCustodialName(parsedName);
+      syncFormFromCustodialAddress(parsedAddr);
+
+      setForm((prev) => ({
+        ...prev,
+        householdSize: data.householdSize || prev.householdSize || '',
+        monthlyIncome: data.monthlyIncome || prev.monthlyIncome || '',
+      }));
+
+      setSuccessMessage("PDF data extracted and autofilled successfully!");
+    } catch (err: any) {
+      console.error(err);
+      setError("Failed to extract data: " + err.message);
+    } finally {
+      setParsingPdf(false);
+      e.target.value = '';
+    }
+  };
+
   // Review inline editing states
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [rollbackForm, setRollbackForm] = useState<ApplyFormData | null>(null);
@@ -1428,16 +1538,119 @@ export default function ApplyWizard() {
         </div>
       )}
 
+      {successMessage && (
+        <div
+          className="toast-alert"
+          style={{
+            position: 'fixed',
+            top: '24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '14px',
+            background: 'rgba(255, 255, 255, 0.88)',
+            backdropFilter: 'blur(16px)',
+            WebkitBackdropFilter: 'blur(16px)',
+            border: '1px solid rgba(34, 197, 94, 0.15)',
+            borderLeft: '4px solid var(--success)',
+            boxShadow: '0 20px 25px -5px rgba(34, 197, 94, 0.08), 0 8px 10px -6px rgba(34, 197, 94, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.6)',
+            borderRadius: '12px',
+            padding: '14px 20px',
+            maxWidth: '90%',
+            width: '440px',
+            pointerEvents: 'auto',
+            transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}
+          role="alert"
+        >
+          <div style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+            <CheckCircle2 size={20} strokeWidth={2.5} />
+          </div>
+          <div style={{ flex: 1, fontSize: '13.5px', fontWeight: 600, color: 'var(--primary)', lineHeight: 1.4, textAlign: 'left' }}>
+            {successMessage}
+          </div>
+          <button
+            type="button"
+            onClick={() => setSuccessMessage('')}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: '#94a3b8',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              padding: '6px',
+              borderRadius: '50%',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(34, 197, 94, 0.08)';
+              e.currentTarget.style.color = 'var(--success)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.color = '#94a3b8';
+            }}
+          >
+            <X size={14} strokeWidth={2.5} />
+          </button>
+        </div>
+      )}
+
       <div className="apply-container">
         <div className="apply-header">
           <div>
             <h1>{t('apply.pageTitle')}</h1>
             <p>{stepProgressLabel} &bull; {t(STEP_LABEL_KEYS[currentStep.key].label)}</p>
           </div>
-          <button type="button" className="apply-btn apply-btn-outline" onClick={handleSaveAndExit}>
-            <Save size={16} strokeWidth={2} />
-            {t('apply.saveExit')}
-          </button>
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+            <input
+              type="file"
+              accept=".pdf"
+              id="pdf-autofill-upload"
+              style={{ display: 'none' }}
+              onChange={handlePdfUpload}
+            />
+            <button
+              type="button"
+              className="apply-btn"
+              onClick={() => document.getElementById('pdf-autofill-upload')?.click()}
+              disabled={parsingPdf}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 8,
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
+                color: '#ffffff',
+                border: 'none',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+                fontWeight: 600,
+                cursor: parsingPdf ? 'not-allowed' : 'pointer',
+                opacity: parsingPdf ? 0.7 : 1,
+              }}
+              onMouseEnter={(e) => {
+                if (parsingPdf) return;
+                e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.3)';
+              }}
+              onMouseLeave={(e) => {
+                if (parsingPdf) return;
+                e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
+                e.currentTarget.style.transform = 'none';
+                e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.2)';
+              }}
+            >
+              <FileText size={16} strokeWidth={2} />
+              {parsingPdf ? 'Parsing PDF...' : 'Upload PDF'}
+            </button>
+            <button type="button" className="apply-btn apply-btn-outline" onClick={handleSaveAndExit}>
+              <Save size={16} strokeWidth={2} />
+              {t('apply.saveExit')}
+            </button>
+          </div>
         </div>
 
         <div className="apply-layout">
@@ -1889,15 +2102,19 @@ export default function ApplyWizard() {
                             {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                           </select>
                         </FieldRow>
-                        <FieldRow label={t('field.maidenName')}>
-                          <input type="text" value={details.custodialName.maidenName} onChange={(e) => updateCustodialName({ maidenName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.spouseName')}>
-                          <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.dateMarried')}>
-                          <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
-                        </FieldRow>
+                        {details.custodialName.maritalStatus === 'Married' && (
+                          <>
+                            <FieldRow label={t('field.maidenName')}>
+                              <input type="text" value={details.custodialName.maidenName} onChange={(e) => updateCustodialName({ maidenName: e.target.value })} />
+                            </FieldRow>
+                            <FieldRow label={t('field.spouseName')}>
+                              <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
+                            </FieldRow>
+                            <FieldRow label={t('field.dateMarried')}>
+                              <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
+                            </FieldRow>
+                          </>
+                        )}
                       </div>
                     </>
                   )}
@@ -3364,15 +3581,19 @@ export default function ApplyWizard() {
                                   {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                                 </select>
                               </FieldRow>
-                              <FieldRow label="Maiden Name">
-                                <input type="text" value={details.custodialName.maidenName} onChange={(e) => updateCustodialName({ maidenName: e.target.value })} />
-                              </FieldRow>
-                              <FieldRow label="Spouse Name">
-                                <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
-                              </FieldRow>
-                              <FieldRow label="Date Married">
-                                <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
-                              </FieldRow>
+                              {details.custodialName.maritalStatus === 'Married' && (
+                                <>
+                                  <FieldRow label="Maiden Name">
+                                    <input type="text" value={details.custodialName.maidenName} onChange={(e) => updateCustodialName({ maidenName: e.target.value })} />
+                                  </FieldRow>
+                                  <FieldRow label="Spouse Name">
+                                    <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
+                                  </FieldRow>
+                                  <FieldRow label="Date Married">
+                                    <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
+                                  </FieldRow>
+                                </>
+                              )}
                             </div>
 
                             <FormBar title="Residential Address" />
@@ -3757,15 +3978,19 @@ export default function ApplyWizard() {
                                     {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                                   </select>
                                 </FieldRow>
-                                <FieldRow label="Maiden Name">
-                                  <input type="text" value={details.noncustodialName.maidenName} onChange={(e) => updateNoncustodialName({ maidenName: e.target.value })} />
-                                </FieldRow>
-                                <FieldRow label="Spouse Name">
-                                  <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
-                                </FieldRow>
-                                <FieldRow label="Date Married">
-                                  <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
-                                </FieldRow>
+                                {details.noncustodialName.maritalStatus === 'Married' && (
+                                  <>
+                                    <FieldRow label="Maiden Name">
+                                      <input type="text" value={details.noncustodialName.maidenName} onChange={(e) => updateNoncustodialName({ maidenName: e.target.value })} />
+                                    </FieldRow>
+                                    <FieldRow label="Spouse Name">
+                                      <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
+                                    </FieldRow>
+                                    <FieldRow label="Date Married">
+                                      <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
+                                    </FieldRow>
+                                  </>
+                                )}
                               </div>
 
                               <FormBar title="Physical Description" />
