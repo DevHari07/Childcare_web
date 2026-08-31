@@ -256,6 +256,7 @@ const hi: Record<TranslationKey, string> = {
   'apply.hub.income': 'आय',
   'apply.hub.mother': 'माँ',
   'apply.hub.father': 'पिता',
+  'apply.hub.contacts': 'संपर्क',
   'apply.hub.siblings': 'भाई-बहन',
   'apply.hub.military': 'सैन्य सेवा',
   'apply.hub.criminalHistory': 'आपराधिक इतिहास',
@@ -333,6 +334,28 @@ const hi: Record<TranslationKey, string> = {
   'field.knowsAddressQuestion': 'क्या आप गैर-अभिभावक माता/पिता का वर्तमान आवासीय पता जानते हैं?',
   'field.deceased': 'दिवंगत',
   'field.maidenNameOnly': 'मायके का नाम',
+  'field.height': 'ऊंचाई',
+  'field.phone': 'फ़ोन',
+
+  'field.militaryStatus': 'सैन्य स्थिति',
+  'field.militaryBranch': 'सैन्य शाखा',
+  'field.serviceNumber': 'सेवा संख्या',
+  'field.datesServed': 'सेवा की तारीखें',
+
+  'field.hasCriminalRecord': 'क्या गैर-अभिरक्षक माता-पिता का आपराधिक रिकॉर्ड है?',
+  'field.incarcerated': 'क्या गैर-अभिरक्षक माता-पिता कैद में हैं?',
+  'field.institutionName': 'संस्था का नाम',
+  'field.onParole': 'क्या गैर-अभिरक्षक माता-पिता पैरोल पर हैं?',
+  'field.paroleOfficer': 'पैरोल अधिकारी',
+
+  'field.orderType': 'आदेश प्रकार',
+  'field.orderNumber': 'आदेश संख्या',
+  'field.stateFiled': 'दायर राज्य',
+  'field.dateFiled': 'दाखिल करने की तारीख',
+  'field.amount': 'राशि',
+  'field.frequency': 'आवृत्ति',
+  'field.startDate': 'प्रारंभ तिथि',
+  'field.endDate': 'समाप्ति तिथि',
 
   // आय फ़ॉर्म
   'income.title': 'आय',

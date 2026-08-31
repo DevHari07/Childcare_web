@@ -256,6 +256,7 @@ const es: Record<TranslationKey, string> = {
   'apply.hub.income': 'Ingresos',
   'apply.hub.mother': 'Madre',
   'apply.hub.father': 'Padre',
+  'apply.hub.contacts': 'Contactos',
   'apply.hub.siblings': 'Hermanos',
   'apply.hub.military': 'Militar',
   'apply.hub.criminalHistory': 'Antecedentes Penales',
@@ -333,6 +334,28 @@ const es: Record<TranslationKey, string> = {
   'field.knowsAddressQuestion': '¿Conoce la dirección residencial actual del padre/madre sin custodia?',
   'field.deceased': 'Fallecido/a',
   'field.maidenNameOnly': 'Nombre de soltera',
+  'field.height': 'Estatura',
+  'field.phone': 'Teléfono',
+
+  'field.militaryStatus': 'Estado Militar',
+  'field.militaryBranch': 'Rama Militar',
+  'field.serviceNumber': 'Número de Servicio',
+  'field.datesServed': 'Fechas de Servicio',
+
+  'field.hasCriminalRecord': '¿El padre o madre sin custodia tiene antecedentes penales?',
+  'field.incarcerated': '¿El padre o madre sin custodia está encarcelado(a)?',
+  'field.institutionName': 'Nombre de la Institución',
+  'field.onParole': '¿El padre o madre sin custodia está en libertad condicional?',
+  'field.paroleOfficer': 'Oficial de Libertad Condicional',
+
+  'field.orderType': 'Tipo de Orden',
+  'field.orderNumber': 'Número de Orden',
+  'field.stateFiled': 'Estado donde se Presentó',
+  'field.dateFiled': 'Fecha de Presentación',
+  'field.amount': 'Monto',
+  'field.frequency': 'Frecuencia',
+  'field.startDate': 'Fecha de Inicio',
+  'field.endDate': 'Fecha de Finalización',
 
   // Formulario de ingresos
   'income.title': 'Ingresos',

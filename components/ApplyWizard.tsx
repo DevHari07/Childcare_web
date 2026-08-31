@@ -23,6 +23,7 @@ import {
   HandCoins,
   Search,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   X,
   Plus,
@@ -101,6 +102,25 @@ const EMPTY_OTHER_CHILD: OtherChildEntry = {
   birthDate: '',
 };
 
+interface ContactEntry {
+  id: string;
+  relationship: 'relative' | 'friend' | '';
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  zip: string;
+  phone: string;
+}
+
+const EMPTY_CONTACT: ContactEntry = {
+  id: '', relationship: '', firstName: '', middleName: '', lastName: '',
+  addressLine1: '', addressLine2: '', city: '', state: '', zip: '', phone: '',
+};
+
 const EMPTY_CHILD: ChildEntry = {
   id: '', firstName: '', middleName: '', lastName: '', suffix: '', ssn: '', gender: '',
   birthDate: '', birthCity: '', birthState: '', relationship: '', state: '',
@@ -128,6 +148,7 @@ interface ApplyFormData {
   children: ChildEntry[];
   supportOrders: SupportOrderEntry[];
   otherChildren: OtherChildEntry[];
+  contacts: ContactEntry[];
   otherInformationText: string;
   providerName: string;
   certify: boolean;
@@ -385,6 +406,118 @@ interface RelativeInfo {
 
 const EMPTY_RELATIVE: RelativeInfo = { firstName: '', middleName: '', lastName: '', maidenName: '', deceased: '', birthCity: '', birthState: '' };
 
+interface MilitaryInfo {
+  status: string;
+  branch: string;
+  serviceNumber: string;
+  servedFrom: string;
+  servedTo: string;
+}
+
+const EMPTY_MILITARY: MilitaryInfo = { status: '', branch: '', serviceNumber: '', servedFrom: '', servedTo: '' };
+
+const MILITARY_STATUS_OPTIONS = [
+  'Active Service', 'Dishonorable Discharge', 'General Discharge', 'Honorable Discharge',
+  'Military Disability', 'No Military Service', 'Prior Military Service', 'Reserves', 'Retired',
+];
+
+const MILITARY_BRANCH_OPTIONS = ['Army', 'Navy', 'Air Force', 'Marine Corps', 'Coast Guard', 'Space Force', 'National Guard'];
+
+interface CriminalHistoryInfo {
+  hasCriminalRecord: 'yes' | 'no' | 'unknown' | '';
+  incarcerated: 'yes' | 'no' | 'unknown' | '';
+  institutionName: string;
+  institutionCity: string;
+  institutionState: string;
+  onParole: 'yes' | 'no' | 'unknown' | '';
+  paroleOfficer: string;
+  paroleOfficerPhone: string;
+}
+
+const EMPTY_CRIMINAL_HISTORY: CriminalHistoryInfo = {
+  hasCriminalRecord: '', incarcerated: '', institutionName: '', institutionCity: '', institutionState: '',
+  onParole: '', paroleOfficer: '', paroleOfficerPhone: '',
+};
+
+interface FinancialAccountEntry {
+  id: string;
+  institutionName: string;
+  accountType: string;
+  accountNumber: string;
+  accountValue: string;
+}
+
+interface FinancialAccountsInfo {
+  inBankruptcy: 'yes' | 'no' | 'unknown' | '';
+  accounts: FinancialAccountEntry[];
+}
+
+const MAX_FINANCIAL_ACCOUNTS = 5;
+
+const EMPTY_FINANCIAL_ACCOUNT: Omit<FinancialAccountEntry, 'id'> = {
+  institutionName: '', accountType: '', accountNumber: '', accountValue: '',
+};
+
+const EMPTY_FINANCIAL_ACCOUNTS: FinancialAccountsInfo = {
+  inBankruptcy: '', accounts: [],
+};
+
+interface LicenseInfo {
+  driversLicenseNumber: string;
+  driversLicenseState: string;
+  professionalLicenseHeld: 'yes' | 'no' | '';
+  licenseType: string;
+  licenseNumber: string;
+  issuingState: string;
+}
+
+const EMPTY_LICENSE: LicenseInfo = {
+  driversLicenseNumber: '', driversLicenseState: '', professionalLicenseHeld: '',
+  licenseType: '', licenseNumber: '', issuingState: '',
+};
+
+const PROFESSIONAL_LICENSE_TYPE_OPTIONS = [
+  'Accounting/CPA', 'Attorney/Law', 'Cosmetology', 'Dental', 'Engineering', 'Insurance',
+  'Medical/Physician', 'Nursing', 'Pharmacy', 'Real Estate', 'Teaching', 'Other',
+];
+
+interface VehicleEntry {
+  id: string;
+  type: string;
+  year: string;
+  make: string;
+  model: string;
+  licenseNumber: string;
+  state: string;
+}
+
+const MAX_VEHICLES = 5;
+
+const VEHICLE_TYPE_OPTIONS = ['BOAT', 'CAR', 'MOTORCYCLE', 'OTHER', 'SNOWMOBILE', 'TRUCK'];
+
+// Descending list of model years, from a few years ahead down to 1950.
+const VEHICLE_YEAR_OPTIONS = Array.from({ length: 2027 - 1950 + 1 }, (_, i) => String(2027 - i));
+
+const EMPTY_VEHICLE: Omit<VehicleEntry, 'id'> = {
+  type: '', year: '', make: '', model: '', licenseNumber: '', state: '',
+};
+
+interface PropertyInfo {
+  description: string;
+  estimatedValue: string;
+  addressLine1: string;
+  addressLine2: string;
+  city: string;
+  state: string;
+  zip: string;
+  lienHolder: string;
+}
+
+const EMPTY_PROPERTY: PropertyInfo = {
+  description: '', estimatedValue: '', addressLine1: '', addressLine2: '',
+  city: '', state: '', zip: '', lienHolder: '',
+};
+
 interface ApplicationDetails {
   custodialName: PersonNameInfo;
   custodialAddress: PersonAddressInfo;
@@ -396,6 +529,12 @@ interface ApplicationDetails {
   noncustodialIncome: IncomeInfo;
   noncustodialMother: RelativeInfo;
   noncustodialFather: RelativeInfo;
+  noncustodialMilitary: MilitaryInfo;
+  noncustodialCriminalHistory: CriminalHistoryInfo;
+  noncustodialFinancialAccounts: FinancialAccountsInfo;
+  noncustodialLicense: LicenseInfo;
+  noncustodialVehicles: VehicleEntry[];
+  noncustodialProperty: PropertyInfo;
 }
 
 function emptyDetails(): ApplicationDetails {
@@ -410,6 +549,12 @@ function emptyDetails(): ApplicationDetails {
     noncustodialIncome: { ...EMPTY_INCOME },
     noncustodialMother: { ...EMPTY_RELATIVE },
     noncustodialFather: { ...EMPTY_RELATIVE },
+    noncustodialMilitary: { ...EMPTY_MILITARY },
+    noncustodialCriminalHistory: { ...EMPTY_CRIMINAL_HISTORY },
+    noncustodialFinancialAccounts: { ...EMPTY_FINANCIAL_ACCOUNTS, accounts: [] },
+    noncustodialLicense: { ...EMPTY_LICENSE },
+    noncustodialVehicles: [],
+    noncustodialProperty: { ...EMPTY_PROPERTY },
   };
 }
 
@@ -428,10 +573,34 @@ const RACE_OPTIONS = ['White', 'Black or African American', 'American Indian or 
 const HEIGHT_FEET_OPTIONS = ['3', '4', '5', '6', '7'];
 const HEIGHT_INCH_OPTIONS = Array.from({ length: 12 }, (_, i) => String(i));
 
+// Placeholder data for the "Retrieve" button on the Custodial Parent SSN field.
+// Stands in for a real SSN-based lookup until that integration exists.
+const MOCK_CUSTODIAL_NAME: Omit<PersonNameInfo, 'ssn'> = {
+  firstName: 'John', middleName: 'A', lastName: 'Anderson', suffix: '',
+  gender: 'male', birthDate: '1985-04-12', birthCity: 'Fargo', birthState: 'North Dakota',
+  maritalStatus: 'Married', maidenName: '', spouseName: 'Sarah Anderson', dateMarried: '2012-06-20',
+};
+
+const MOCK_CUSTODIAL_ADDRESS: Omit<PersonAddressInfo, 'mailing'> = {
+  knowsAddress: 'yes',
+  residential: { line1: '1204 Main Ave', line2: 'Apt 3', city: 'Fargo', state: 'North Dakota', zip: '58102', country: 'United States of America' },
+  homePhone: '7015555678',
+  cellPhone: '7015551234',
+  emergencyPhone: '7015559876',
+  email: 'john.anderson@example.com',
+};
+
+const MOCK_CUSTODIAL_EMPLOYMENT: EmploymentInfo = {
+  currentlyEmployed: 'yes', employerName: 'Sanford Health', workPhone: '7015552468',
+};
+
+const MOCK_CUSTODIAL_HOUSEHOLD_SIZE = '4';
+const MOCK_CUSTODIAL_MONTHLY_INCOME = '3200';
+
 type SubSectionKey =
   | 'custodial-name' | 'custodial-address' | 'custodial-employment' | 'custodial-household' | 'custodial-children'
   | 'noncustodial-name' | 'noncustodial-description' | 'noncustodial-address'
-  | 'noncustodial-employment' | 'noncustodial-income' | 'noncustodial-mother' | 'noncustodial-father'
+  | 'noncustodial-employment' | 'noncustodial-income' | 'noncustodial-mother' | 'noncustodial-father' | 'noncustodial-contacts' | 'noncustodial-military' | 'noncustodial-criminal-history' | 'noncustodial-financial-accounts' | 'noncustodial-license' | 'noncustodial-vehicles' | 'noncustodial-property'
   | 'other-support-orders' | 'other-children' | 'other-information';
 
 const SUB_SECTIONS: { key: SubSectionKey; groupKey: TranslationKey; labelKey: TranslationKey }[] = [
@@ -447,6 +616,13 @@ const SUB_SECTIONS: { key: SubSectionKey; groupKey: TranslationKey; labelKey: Tr
   { key: 'noncustodial-income', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.income' },
   { key: 'noncustodial-mother', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.mother' },
   { key: 'noncustodial-father', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.father' },
+  { key: 'noncustodial-contacts', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.contacts' },
+  { key: 'noncustodial-military', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.military' },
+  { key: 'noncustodial-criminal-history', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.criminalHistory' },
+  { key: 'noncustodial-financial-accounts', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.financialAccounts' },
+  { key: 'noncustodial-license', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.license' },
+  { key: 'noncustodial-vehicles', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.vehicles' },
+  { key: 'noncustodial-property', groupKey: 'apply.hub.colNoncustodial', labelKey: 'apply.hub.property' },
   { key: 'other-support-orders', groupKey: 'apply.hub.colOther', labelKey: 'apply.hub.supportOrders' },
   { key: 'other-children', groupKey: 'apply.hub.colOther', labelKey: 'apply.hub.otherChildren' },
   { key: 'other-information', groupKey: 'apply.hub.colOther', labelKey: 'apply.hub.otherInformation' },
@@ -502,6 +678,7 @@ const EMPTY_FORM: ApplyFormData = {
   children: [],
   supportOrders: [],
   otherChildren: [],
+  contacts: [],
   otherInformationText: '',
   providerName: '',
   certify: false,
@@ -523,7 +700,7 @@ const MY_APPLICATION_GROUPS: {
       key: 'noncustodial',
       label: 'Non-Custodial Parent',
       firstSubKey: 'noncustodial-name',
-      subkeys: ['noncustodial-name', 'noncustodial-address', 'noncustodial-employment', 'noncustodial-income', 'noncustodial-mother', 'noncustodial-father']
+      subkeys: ['noncustodial-name', 'noncustodial-address', 'noncustodial-employment', 'noncustodial-income', 'noncustodial-mother', 'noncustodial-father', 'noncustodial-contacts', 'noncustodial-military', 'noncustodial-criminal-history', 'noncustodial-financial-accounts', 'noncustodial-license', 'noncustodial-vehicles', 'noncustodial-property']
     },
     {
       key: 'children',
@@ -573,8 +750,14 @@ export default function ApplyWizard() {
   const [showChildForm, setShowChildForm] = useState(false);
   const [showSupportOrderForm, setShowSupportOrderForm] = useState(false);
   const [supportOrderDraft, setSupportOrderDraft] = useState<SupportOrderEntry>(EMPTY_SUPPORT_ORDER);
+  const [showFinancialAccountForm, setShowFinancialAccountForm] = useState(false);
+  const [financialAccountDraft, setFinancialAccountDraft] = useState<Omit<FinancialAccountEntry, 'id'>>(EMPTY_FINANCIAL_ACCOUNT);
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
+  const [vehicleDraft, setVehicleDraft] = useState<Omit<VehicleEntry, 'id'>>(EMPTY_VEHICLE);
   const [showOtherChildForm, setShowOtherChildForm] = useState(false);
   const [otherChildDraft, setOtherChildDraft] = useState<OtherChildEntry>(EMPTY_OTHER_CHILD);
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [contactDraft, setContactDraft] = useState<ContactEntry>(EMPTY_CONTACT);
   const [showSignaturePage, setShowSignaturePage] = useState(false);
   const [soSworn, setSoSworn] = useState(false);
 
@@ -686,6 +869,18 @@ export default function ApplyWizard() {
       setParsingPdf(false);
       e.target.value = '';
     }
+  };
+
+  const handleRetrieveCustodialMockData = () => {
+    updateCustodialName({ ...MOCK_CUSTODIAL_NAME });
+    updateCustodialAddressField({ ...MOCK_CUSTODIAL_ADDRESS });
+    updateCustodialEmployment({ ...MOCK_CUSTODIAL_EMPLOYMENT });
+    setForm((prev) => ({
+      ...prev,
+      householdSize: MOCK_CUSTODIAL_HOUSEHOLD_SIZE,
+      monthlyIncome: MOCK_CUSTODIAL_MONTHLY_INCOME,
+    }));
+    setSuccessMessage('Mock data retrieved and filled for Custodial Parent.');
   };
 
   // Review inline editing states
@@ -829,10 +1024,36 @@ export default function ApplyWizard() {
   };
 
   const cardBodyRef = React.useRef<HTMLDivElement>(null);
+  const subSectionTrackRef = React.useRef<HTMLDivElement>(null);
 
   const scrollCardToTop = () => {
     cardBodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  const scrollSubSectionTrack = (direction: 'left' | 'right') => {
+    subSectionTrackRef.current?.scrollBy({ left: direction === 'left' ? -160 : 160, behavior: 'smooth' });
+  };
+
+  const [subSectionScroll, setSubSectionScroll] = useState({ canLeft: false, canRight: false });
+
+  const updateSubSectionScrollState = () => {
+    const el = subSectionTrackRef.current;
+    if (!el) return;
+    setSubSectionScroll({
+      canLeft: el.scrollLeft > 1,
+      canRight: el.scrollLeft + el.clientWidth < el.scrollWidth - 1,
+    });
+  };
+
+  useEffect(() => {
+    // Recompute after the track's content (re)renders for the active group.
+    const id = requestAnimationFrame(updateSubSectionScrollState);
+    window.addEventListener('resize', updateSubSectionScrollState);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('resize', updateSubSectionScrollState);
+    };
+  }, [activeSubSection]);
 
   const draftKey = user ? `ccap_draft_${user.id}` : null;
   const applicationsKey = user ? `ccap_applications_${user.id}` : null;
@@ -949,6 +1170,93 @@ export default function ApplyWizard() {
     setDetails((prev) => ({ ...prev, noncustodialFather: { ...prev.noncustodialFather, ...patch } }));
   };
 
+  const updateMilitary = (patch: Partial<MilitaryInfo>) => {
+    setDetails((prev) => ({ ...prev, noncustodialMilitary: { ...prev.noncustodialMilitary, ...patch } }));
+  };
+
+  const updateCriminalHistory = (patch: Partial<CriminalHistoryInfo>) => {
+    setDetails((prev) => ({ ...prev, noncustodialCriminalHistory: { ...prev.noncustodialCriminalHistory, ...patch } }));
+  };
+
+  const updateFinancialAccounts = (patch: Partial<FinancialAccountsInfo>) => {
+    setDetails((prev) => ({ ...prev, noncustodialFinancialAccounts: { ...EMPTY_FINANCIAL_ACCOUNTS, ...prev.noncustodialFinancialAccounts, ...patch } }));
+  };
+
+  const updateLicense = (patch: Partial<LicenseInfo>) => {
+    setDetails((prev) => ({ ...prev, noncustodialLicense: { ...EMPTY_LICENSE, ...prev.noncustodialLicense, ...patch } }));
+  };
+
+  const handleSaveVehicle = () => {
+    if (!vehicleDraft.type) {
+      setError('Please select the vehicle type.');
+      return;
+    }
+    setError('');
+
+    const newVehicle: VehicleEntry = {
+      ...vehicleDraft,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    };
+    setDetails((prev) => ({
+      ...prev,
+      noncustodialVehicles: [...(prev.noncustodialVehicles ?? []), newVehicle],
+    }));
+    setVehicleDraft(EMPTY_VEHICLE);
+    setShowVehicleForm(false);
+    scrollCardToTop();
+  };
+
+  const removeVehicle = (id: string) => {
+    setDetails((prev) => ({
+      ...prev,
+      noncustodialVehicles: (prev.noncustodialVehicles ?? []).filter((v) => v.id !== id),
+    }));
+  };
+
+  const updateProperty = (patch: Partial<PropertyInfo>) => {
+    setDetails((prev) => ({ ...prev, noncustodialProperty: { ...EMPTY_PROPERTY, ...prev.noncustodialProperty, ...patch } }));
+  };
+
+  const handleSaveFinancialAccount = () => {
+    if (!financialAccountDraft.institutionName.trim()) {
+      setError('Please enter the institution/bank name for the financial account.');
+      return;
+    }
+    setError('');
+
+    const newAccount: FinancialAccountEntry = {
+      ...financialAccountDraft,
+      institutionName: financialAccountDraft.institutionName.trim(),
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    };
+    setDetails((prev) => {
+      const current = prev.noncustodialFinancialAccounts ?? EMPTY_FINANCIAL_ACCOUNTS;
+      return {
+        ...prev,
+        noncustodialFinancialAccounts: {
+          ...current,
+          accounts: [...(current.accounts ?? []), newAccount],
+        },
+      };
+    });
+    setFinancialAccountDraft(EMPTY_FINANCIAL_ACCOUNT);
+    setShowFinancialAccountForm(false);
+    scrollCardToTop();
+  };
+
+  const removeFinancialAccount = (id: string) => {
+    setDetails((prev) => {
+      const current = prev.noncustodialFinancialAccounts ?? EMPTY_FINANCIAL_ACCOUNTS;
+      return {
+        ...prev,
+        noncustodialFinancialAccounts: {
+          ...current,
+          accounts: (current.accounts ?? []).filter((a) => a.id !== id),
+        },
+      };
+    });
+  };
+
   const incomeTotal = useMemo(() => {
     return Object.values(details.noncustodialIncome).reduce((sum, item) => {
       const n = parseFloat(item.amount);
@@ -1022,7 +1330,13 @@ export default function ApplyWizard() {
 
   const saveDraft = (data: ApplyFormData, atStepIndex: number) => {
     if (!draftKey) return;
-    localStorage.setItem(draftKey, JSON.stringify({ data, stepIndex: atStepIndex, details }));
+    localStorage.setItem(draftKey, JSON.stringify({
+      data,
+      stepIndex: atStepIndex,
+      details,
+      activeSubSection,
+      visitedSubSections: Array.from(visitedSubSections),
+    }));
     setHasSavedDraft(true);
   };
 
@@ -1032,11 +1346,32 @@ export default function ApplyWizard() {
     if (!raw) return false;
     try {
       const parsed = JSON.parse(raw);
-      setForm(parsed.data);
+      // Merge onto current defaults so drafts saved before new fields (e.g. contacts)
+      // existed don't come back with those fields missing.
+      setForm({ ...EMPTY_FORM, ...parsed.data });
       setFurthestStep(parsed.stepIndex ?? 0);
       setStepIndex(parsed.stepIndex ?? 0);
       if (parsed.details) {
-        setDetails(parsed.details);
+        // Deep-merge each sub-object onto defaults so drafts saved before a field
+        // (or a whole sub-section like License) existed don't come back missing it.
+        const base = emptyDetails();
+        const merged = { ...base } as ApplicationDetails;
+        (Object.keys(base) as (keyof ApplicationDetails)[]).forEach((k) => {
+          const saved = (parsed.details as Partial<ApplicationDetails>)[k];
+          if (saved && typeof saved === 'object' && !Array.isArray(saved)) {
+            (merged[k] as unknown) = { ...(base[k] as object), ...(saved as object) };
+          } else if (saved !== undefined) {
+            (merged[k] as unknown) = saved;
+          }
+        });
+        setDetails(merged);
+      }
+      // Resume on the exact sub-section (e.g. Income) the user was on when they saved,
+      // instead of dropping them back at the hub grid.
+      const savedSubSection = SUB_SECTIONS.some((s) => s.key === parsed.activeSubSection) ? parsed.activeSubSection : null;
+      setActiveSubSection(savedSubSection);
+      if (Array.isArray(parsed.visitedSubSections)) {
+        setVisitedSubSections(new Set(parsed.visitedSubSections.filter((k: string) => SUB_SECTIONS.some((s) => s.key === k))));
       }
       return true;
     } catch {
@@ -1229,6 +1564,34 @@ export default function ApplyWizard() {
     });
   };
 
+  const updateContactDraft = (patch: Partial<ContactEntry>) => {
+    setContactDraft((prev) => ({ ...prev, ...patch }));
+  };
+
+  const handleAddContact = () => {
+    if (!contactDraft.relationship || !contactDraft.firstName.trim() || !contactDraft.lastName.trim()) {
+      setError('Please fill in the relationship, first name, and last name for the contact.');
+      return;
+    }
+    setError('');
+
+    const newContact: ContactEntry = { ...contactDraft, id: `${Date.now()}-${Math.random().toString(36).slice(2)}` };
+    setForm((prev) => ({ ...prev, contacts: [...prev.contacts, newContact] }));
+    setContactDraft(EMPTY_CONTACT);
+    setShowContactForm(false);
+    scrollCardToTop();
+  };
+
+  const handleCancelContact = () => {
+    setContactDraft(EMPTY_CONTACT);
+    setShowContactForm(false);
+    setError('');
+  };
+
+  const removeContact = (id: string) => {
+    setForm((prev) => ({ ...prev, contacts: prev.contacts.filter((c) => c.id !== id) }));
+  };
+
   const handleSaveSupportOrder = () => {
     if (
       !supportOrderDraft.orderType ||
@@ -1324,6 +1687,7 @@ export default function ApplyWizard() {
 
     const group = MY_APPLICATION_GROUPS.find((g) => g.subkeys.includes(activeSubSection as any));
     if (!group) return null;
+    if (group.subkeys.length <= 1) return null;
 
     const totalSubSteps = group.subkeys.length;
     const activeIdx = group.subkeys.indexOf(activeSubSection as any);
@@ -1338,7 +1702,7 @@ export default function ApplyWizard() {
           background: 'var(--white)',
           marginLeft: '-32px',
           marginRight: '-32px',
-          padding: '8px 32px 32px 32px',
+          padding: '8px 32px 12px 32px',
           borderBottom: '1px solid var(--border-color)',
           marginBottom: 16
         }}
@@ -1352,7 +1716,23 @@ export default function ApplyWizard() {
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'relative', width: '100%', padding: '0 4px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 4, paddingTop: 3 }}>
+          {subSectionScroll.canLeft && (
+            <button
+              type="button"
+              className="sub-section-scroll-btn"
+              onClick={() => scrollSubSectionTrack('left')}
+              aria-label="Scroll steps left"
+            >
+              <ChevronLeft size={16} strokeWidth={2.5} />
+            </button>
+          )}
+          <div
+            ref={subSectionTrackRef}
+            className="sub-section-progress-track"
+            onScroll={updateSubSectionScrollState}
+            style={{ display: 'flex', alignItems: 'center', overflowX: 'auto', overflowY: 'hidden', position: 'relative', flex: 1, minWidth: 0, padding: '0 28px 14px 28px' }}
+          >
           {group.subkeys.map((key, idx) => {
             const subSec = SUB_SECTIONS.find((s) => s.key === key);
             if (!subSec) return null;
@@ -1384,7 +1764,7 @@ export default function ApplyWizard() {
                 {idx > 0 && (
                   <div
                     style={{
-                      flex: 1,
+                      flex: '1 0 32px',
                       height: '2px',
                       background: activeIdx >= idx ? 'var(--success)' : '#e2e8f0',
                       margin: '0 4px',
@@ -1409,6 +1789,7 @@ export default function ApplyWizard() {
                     zIndex: 2,
                     position: 'relative',
                     width: '50px',
+                    flexShrink: 0,
                     textAlign: 'center'
                   }}
                 >
@@ -1463,6 +1844,17 @@ export default function ApplyWizard() {
               </React.Fragment>
             );
           })}
+          </div>
+          {subSectionScroll.canRight && (
+            <button
+              type="button"
+              className="sub-section-scroll-btn"
+              onClick={() => scrollSubSectionTrack('right')}
+              aria-label="Scroll steps right"
+            >
+              <ChevronRight size={16} strokeWidth={2.5} />
+            </button>
+          )}
         </div>
       </div>
     );
@@ -1988,6 +2380,9 @@ export default function ApplyWizard() {
                       {renderHubLink(t('apply.hub.income'), 'noncustodial-income')}
                       {renderHubLink(t('apply.hub.mother'), 'noncustodial-mother')}
                       {renderHubLink(t('apply.hub.father'), 'noncustodial-father')}
+                      {renderHubLink(t('apply.hub.contacts'), 'noncustodial-contacts')}
+                      {renderHubLink(t('apply.hub.military'), 'noncustodial-military')}
+                      {renderHubLink(t('apply.hub.criminalHistory'), 'noncustodial-criminal-history')}
                       {renderHubLink(t('apply.hub.siblings'))}
                       {renderHubLink(t('apply.hub.military'))}
                       {renderHubLink(t('apply.hub.criminalHistory'))}
@@ -2060,38 +2455,49 @@ export default function ApplyWizard() {
 
                   {activeSubSection === 'custodial-name' && (
                     <>
-                      <FormBar title={t('field.name')} />
+                      <FormBar title={t('field.ssn')} />
                       <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.firstName')} required>
-                          <input type="text" value={details.custodialName.firstName} onChange={(e) => updateCustodialName({ firstName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.middleName')}>
-                          <input type="text" value={details.custodialName.middleName} onChange={(e) => updateCustodialName({ middleName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.lastName')} required>
-                          <input type="text" value={details.custodialName.lastName} onChange={(e) => updateCustodialName({ lastName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.suffix')}>
-                          <input type="text" value={details.custodialName.suffix} onChange={(e) => updateCustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
-                        </FieldRow>
                         <FieldRow label={t('field.ssn')} required hint="(Don't include dashes or spaces, e.g., 123456789)">
-                          <input type="text" value={details.custodialName.ssn} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <input style={{ flex: 1 }} type="text" value={details.custodialName.ssn} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                            <button type="button" className="apply-btn apply-btn-outline" style={{ flexShrink: 0 }} onClick={handleRetrieveCustodialMockData}>
+                              Retrieve
+                            </button>
+                          </div>
                         </FieldRow>
-                        <FieldRow label={t('field.gender')} required>
+                      </div>
+
+                      <FormBar title="Name & Birth Information" />
+                      <div className="ocf-three-col-grid" style={{ marginBottom: 8 }}>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.firstName')}:</label>
+                          <input type="text" value={details.custodialName.firstName} onChange={(e) => updateCustodialName({ firstName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.middleName')}:</label>
+                          <input type="text" value={details.custodialName.middleName} onChange={(e) => updateCustodialName({ middleName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.lastName')}:</label>
+                          <input type="text" value={details.custodialName.lastName} onChange={(e) => updateCustodialName({ lastName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.suffix')}:</label>
+                          <input type="text" value={details.custodialName.suffix} onChange={(e) => updateCustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.gender')}:</label>
                           <TriRadio
                             name="custodial-gender"
                             value={details.custodialName.gender}
                             onChange={(v) => updateCustodialName({ gender: v as PersonNameInfo['gender'] })}
                             options={[{ value: 'female', label: t('field.female') }, { value: 'male', label: t('field.male') }]}
                           />
-                        </FieldRow>
-                      </div>
-
-                      <FormBar title={t('field.birth')} />
-                      <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.birthDate')} required hint="mm / dd / yyyy">
-                          <input type="date" value={details.custodialName.birthDate} onChange={(e) => updateCustodialName({ birthDate: e.target.value })} />
-                        </FieldRow>
+                        </div>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.birthDate')}:</label>
+                          <input type="date" value={details.custodialName.birthDate} onChange={(e) => updateCustodialName({ birthDate: e.target.value })} className="modern-input" />
+                        </div>
                       </div>
 
                       <FormBar title={t('field.maritalStatus')} />
@@ -2254,7 +2660,7 @@ export default function ApplyWizard() {
                           </div>
 
                           {!showChildForm && (
-                            <div className="info-banner" style={{ marginBottom: 24 }}>
+                            <div className="info-banner info-banner-alert" style={{ marginBottom: 24 }}>
                               <div className="info-banner-icon">
                                 <Info size={16} strokeWidth={2.5} />
                               </div>
@@ -2552,47 +2958,55 @@ export default function ApplyWizard() {
 
                   {activeSubSection === 'noncustodial-name' && (
                     <>
-                      <FormBar title={t('field.name')} />
+                      <FormBar title={t('field.ssn')} />
                       <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.firstName')} required>
-                          <input type="text" value={details.noncustodialName.firstName} onChange={(e) => updateNoncustodialName({ firstName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.middleName')}>
-                          <input type="text" value={details.noncustodialName.middleName} onChange={(e) => updateNoncustodialName({ middleName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.lastName')} required>
-                          <input type="text" value={details.noncustodialName.lastName} onChange={(e) => updateNoncustodialName({ lastName: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.suffix')}>
-                          <input type="text" value={details.noncustodialName.suffix} onChange={(e) => updateNoncustodialName({ suffix: e.target.value })} />
-                        </FieldRow>
                         <FieldRow label={t('field.ssn')} hint="If known">
                           <input type="text" value={details.noncustodialName.ssn} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
                         </FieldRow>
-                        <FieldRow label={t('field.gender')} required>
+                      </div>
+
+                      <FormBar title="Name & Birth Information" />
+                      <div className="ocf-three-col-grid" style={{ marginBottom: 8 }}>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.firstName')}:</label>
+                          <input type="text" value={details.noncustodialName.firstName} onChange={(e) => updateNoncustodialName({ firstName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.middleName')}:</label>
+                          <input type="text" value={details.noncustodialName.middleName} onChange={(e) => updateNoncustodialName({ middleName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.lastName')}:</label>
+                          <input type="text" value={details.noncustodialName.lastName} onChange={(e) => updateNoncustodialName({ lastName: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.suffix')}:</label>
+                          <input type="text" value={details.noncustodialName.suffix} onChange={(e) => updateNoncustodialName({ suffix: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label><span className="req">*</span> {t('field.gender')}:</label>
                           <TriRadio
                             name="noncustodial-gender"
                             value={details.noncustodialName.gender}
                             onChange={(v) => updateNoncustodialName({ gender: v as PersonNameInfo['gender'] })}
                             options={[{ value: 'female', label: t('field.female') }, { value: 'male', label: t('field.male') }]}
                           />
-                        </FieldRow>
-                      </div>
-
-                      <FormBar title={t('field.birth')} />
-                      <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.birthDate')} hint="mm / dd / yyyy">
-                          <input type="date" value={details.noncustodialName.birthDate} onChange={(e) => updateNoncustodialName({ birthDate: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.birthCity')}>
-                          <input type="text" value={details.noncustodialName.birthCity} onChange={(e) => updateNoncustodialName({ birthCity: e.target.value })} />
-                        </FieldRow>
-                        <FieldRow label={t('field.birthState')}>
-                          <select value={details.noncustodialName.birthState} onChange={(e) => updateNoncustodialName({ birthState: e.target.value })}>
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.birthDate')}:</label>
+                          <input type="date" value={details.noncustodialName.birthDate} onChange={(e) => updateNoncustodialName({ birthDate: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.birthCity')}:</label>
+                          <input type="text" value={details.noncustodialName.birthCity} onChange={(e) => updateNoncustodialName({ birthCity: e.target.value })} className="modern-input" />
+                        </div>
+                        <div className="modern-field-group">
+                          <label>{t('field.birthState')}:</label>
+                          <select value={details.noncustodialName.birthState} onChange={(e) => updateNoncustodialName({ birthState: e.target.value })} className="modern-input">
                             <option value="">{t('field.pleaseSelect')}</option>
                             {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
                           </select>
-                        </FieldRow>
+                        </div>
                       </div>
 
                       <FormBar title={t('field.maritalStatus')} />
@@ -2603,6 +3017,19 @@ export default function ApplyWizard() {
                             {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                           </select>
                         </FieldRow>
+                        {details.noncustodialName.maritalStatus && details.noncustodialName.maritalStatus !== 'Single' && (
+                          <>
+                            <FieldRow label={t('field.maidenName')}>
+                              <input type="text" value={details.noncustodialName.maidenName} onChange={(e) => updateNoncustodialName({ maidenName: e.target.value })} />
+                            </FieldRow>
+                            <FieldRow label={t('field.spouseName')}>
+                              <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
+                            </FieldRow>
+                            <FieldRow label={t('field.dateMarried')}>
+                              <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
+                            </FieldRow>
+                          </>
+                        )}
                       </div>
                     </>
                   )}
@@ -2870,6 +3297,683 @@ export default function ApplyWizard() {
                       </div>
                     </>
                   )}
+
+                  {activeSubSection === 'noncustodial-contacts' && (
+                    <>
+                      <div className="hub-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <StepHeading
+                          icon={Users}
+                          title={t('apply.hub.contacts')}
+                          subtitle={showContactForm ? "Enter the contact's information." : 'If you know of any person that may be able to locate the noncustodial parent, click the button below to add a contact.'}
+                        />
+                        {!showContactForm && (
+                          <button
+                            type="button"
+                            className="apply-btn apply-btn-primary"
+                            onClick={() => {
+                              setError('');
+                              setShowContactForm(true);
+                              setContactDraft(EMPTY_CONTACT);
+                            }}
+                            disabled={form.contacts.length >= 5}
+                          >
+                            <Plus size={16} strokeWidth={2} />
+                            Add Contact
+                          </button>
+                        )}
+                      </div>
+
+                      {showContactForm && (
+                        <div className="sof-section-container animate-fade-in">
+                          <div className="sof-section-body" style={{ padding: 0 }}>
+                            <FormBar title="Contact Information" />
+                            <div className="ocf-three-col-grid">
+                              <div className="modern-field-group">
+                                <label><span className="req">*</span> Relationship:</label>
+                                <div style={{ display: 'flex', gap: 16, marginTop: 8 }}>
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '13.5px', color: 'var(--foreground)', cursor: 'pointer' }}>
+                                    <input
+                                      type="radio"
+                                      name="contact-relationship"
+                                      checked={contactDraft.relationship === 'relative'}
+                                      onChange={() => updateContactDraft({ relationship: 'relative' })}
+                                    />
+                                    Relative
+                                  </label>
+                                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: '13.5px', color: 'var(--foreground)', cursor: 'pointer' }}>
+                                    <input
+                                      type="radio"
+                                      name="contact-relationship"
+                                      checked={contactDraft.relationship === 'friend'}
+                                      onChange={() => updateContactDraft({ relationship: 'friend' })}
+                                    />
+                                    Friend
+                                  </label>
+                                </div>
+                              </div>
+                              <div className="modern-field-group">
+                                <label><span className="req">*</span> {t('field.firstName')}:</label>
+                                <input type="text" value={contactDraft.firstName} onChange={(e) => updateContactDraft({ firstName: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.middleName')}:</label>
+                                <input type="text" value={contactDraft.middleName} onChange={(e) => updateContactDraft({ middleName: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label><span className="req">*</span> {t('field.lastName')}:</label>
+                                <input type="text" value={contactDraft.lastName} onChange={(e) => updateContactDraft({ lastName: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.addressLine1')}:</label>
+                                <input type="text" value={contactDraft.addressLine1} onChange={(e) => updateContactDraft({ addressLine1: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.addressLine2')}:</label>
+                                <input type="text" value={contactDraft.addressLine2} onChange={(e) => updateContactDraft({ addressLine2: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.city')}:</label>
+                                <input type="text" value={contactDraft.city} onChange={(e) => updateContactDraft({ city: e.target.value })} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.state')}:</label>
+                                <select value={contactDraft.state} onChange={(e) => updateContactDraft({ state: e.target.value })} className="modern-input">
+                                  <option value="">{t('field.pleaseSelect')}</option>
+                                  {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                </select>
+                              </div>
+                              <div className="modern-field-group">
+                                <label>{t('field.zip')}:</label>
+                                <input type="text" value={contactDraft.zip} onChange={(e) => updateContactDraft({ zip: e.target.value })} maxLength={10} className="modern-input" />
+                              </div>
+                              <div className="modern-field-group">
+                                <label>Phone:</label>
+                                <input type="tel" value={contactDraft.phone} onChange={(e) => updateContactDraft({ phone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} className="modern-input" />
+                                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
+                                  (Include area code, but don&apos;t include special characters)
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="ocf-actions-row" style={{ borderTop: '1px solid var(--border-color)', justifyContent: 'space-between' }}>
+                              <button type="button" className="apply-btn apply-btn-outline" onClick={handleCancelContact}>
+                                <X size={16} strokeWidth={2} />
+                                Cancel
+                              </button>
+                              <button type="button" className="apply-btn apply-btn-primary" onClick={handleAddContact}>
+                                <Plus size={16} strokeWidth={2} />
+                                Add Contact
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {!showContactForm && form.contacts.length === 0 && (
+                        <div className="empty-state-box">
+                          <div className="empty-state-icon">
+                            <Users size={32} strokeWidth={1.8} />
+                          </div>
+                          <h4>There are no contacts at this time.</h4>
+                          <p>Please click &ldquo;Add Contact&rdquo; if you know of anyone who may help locate the noncustodial parent.</p>
+                        </div>
+                      )}
+
+                      {!showContactForm && form.contacts.length > 0 && (
+                        <div className="sof-table-container">
+                          <table className="sof-minimal-table">
+                            <thead>
+                              <tr>
+                                <th>Name</th>
+                                <th>Relationship</th>
+                                <th>City / State</th>
+                                <th>Phone</th>
+                                <th style={{ width: 80, textAlign: 'center' }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {form.contacts.map((contact) => {
+                                const fullName = [contact.firstName, contact.lastName].filter(Boolean).join(' ');
+                                return (
+                                  <tr key={contact.id}>
+                                    <td style={{ fontWeight: 600 }}>{fullName || 'Unnamed Contact'}</td>
+                                    <td>{contact.relationship === 'relative' ? 'Relative' : contact.relationship === 'friend' ? 'Friend' : '—'}</td>
+                                    <td>{[contact.city, contact.state].filter(Boolean).join(', ') || '—'}</td>
+                                    <td>{contact.phone || '—'}</td>
+                                    <td>
+                                      <button
+                                        type="button"
+                                        className="sof-table-remove-btn"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          removeContact(contact.id);
+                                        }}
+                                        title="Remove Contact"
+                                      >
+                                        <X size={16} strokeWidth={2} />
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      <p className="empty-state-footer-text" style={{ marginTop: 16 }}>(Maximum number of contacts 5)</p>
+                    </>
+                  )}
+
+                  {activeSubSection === 'noncustodial-military' && (
+                    <>
+                      <FormBar title={t('apply.hub.military')} />
+                      <div className="field-table">
+                        <FieldRow label="Military Status">
+                          <select value={details.noncustodialMilitary.status} onChange={(e) => updateMilitary({ status: e.target.value })}>
+                            <option value="">{t('field.pleaseSelect')}</option>
+                            {MILITARY_STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </FieldRow>
+                        <FieldRow label="Military Branch">
+                          <select value={details.noncustodialMilitary.branch} onChange={(e) => updateMilitary({ branch: e.target.value })}>
+                            <option value="">{t('field.pleaseSelect')}</option>
+                            {MILITARY_BRANCH_OPTIONS.map((b) => <option key={b} value={b}>{b}</option>)}
+                          </select>
+                        </FieldRow>
+                        <FieldRow label="Service Number">
+                          <input type="text" value={details.noncustodialMilitary.serviceNumber} onChange={(e) => updateMilitary({ serviceNumber: e.target.value })} />
+                        </FieldRow>
+                        <FieldRow label="Dates Served">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input style={{ flex: 1, minWidth: 0 }} type="date" value={details.noncustodialMilitary.servedFrom} onChange={(e) => updateMilitary({ servedFrom: e.target.value })} />
+                            <span style={{ color: 'var(--text-secondary)', fontSize: '13px', flexShrink: 0 }}>to</span>
+                            <input style={{ flex: 1, minWidth: 0 }} type="date" value={details.noncustodialMilitary.servedTo} onChange={(e) => updateMilitary({ servedTo: e.target.value })} />
+                          </div>
+                        </FieldRow>
+                      </div>
+                    </>
+                  )}
+
+                  {activeSubSection === 'noncustodial-criminal-history' && (
+                    <>
+                      <FormBar title={t('apply.hub.criminalHistory')} />
+                      <div className="field-table">
+                        <FieldRow label="Does the noncustodial parent have a criminal record?">
+                          <TriRadio
+                            name="criminal-record"
+                            value={details.noncustodialCriminalHistory.hasCriminalRecord}
+                            onChange={(v) => updateCriminalHistory({ hasCriminalRecord: v as CriminalHistoryInfo['hasCriminalRecord'] })}
+                            options={[{ value: 'yes', label: t('apply.common.yes') }, { value: 'no', label: t('apply.common.no') }, { value: 'unknown', label: t('apply.common.unknown') }]}
+                          />
+                        </FieldRow>
+
+                        {details.noncustodialCriminalHistory.hasCriminalRecord === 'yes' && (
+                          <>
+                            <FieldRow label="Is noncustodial parent Incarcerated?">
+                              <TriRadio
+                                name="criminal-incarcerated"
+                                value={details.noncustodialCriminalHistory.incarcerated}
+                                onChange={(v) => updateCriminalHistory({ incarcerated: v as CriminalHistoryInfo['incarcerated'] })}
+                                options={[{ value: 'yes', label: t('apply.common.yes') }, { value: 'no', label: t('apply.common.no') }, { value: 'unknown', label: t('apply.common.unknown') }]}
+                              />
+                            </FieldRow>
+
+                            {details.noncustodialCriminalHistory.incarcerated === 'yes' && (
+                              <>
+                                <FieldRow label="Institution Name">
+                                  <input type="text" value={details.noncustodialCriminalHistory.institutionName} onChange={(e) => updateCriminalHistory({ institutionName: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label={t('field.city')}>
+                                  <input type="text" value={details.noncustodialCriminalHistory.institutionCity} onChange={(e) => updateCriminalHistory({ institutionCity: e.target.value })} />
+                                </FieldRow>
+                                <FieldRow label={t('field.state')}>
+                                  <select value={details.noncustodialCriminalHistory.institutionState} onChange={(e) => updateCriminalHistory({ institutionState: e.target.value })}>
+                                    <option value="">{t('field.pleaseSelect')}</option>
+                                    {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                                  </select>
+                                </FieldRow>
+                              </>
+                            )}
+
+                            {details.noncustodialCriminalHistory.incarcerated === 'no' && (
+                              <>
+                                <FieldRow label="Is noncustodial parent on Parole?">
+                                  <TriRadio
+                                    name="criminal-parole"
+                                    value={details.noncustodialCriminalHistory.onParole}
+                                    onChange={(v) => updateCriminalHistory({ onParole: v as CriminalHistoryInfo['onParole'] })}
+                                    options={[{ value: 'yes', label: t('apply.common.yes') }, { value: 'no', label: t('apply.common.no') }, { value: 'unknown', label: t('apply.common.unknown') }]}
+                                  />
+                                </FieldRow>
+
+                                {details.noncustodialCriminalHistory.onParole === 'yes' && (
+                                  <>
+                                    <FieldRow label="Parole Officer">
+                                      <input type="text" value={details.noncustodialCriminalHistory.paroleOfficer} onChange={(e) => updateCriminalHistory({ paroleOfficer: e.target.value })} />
+                                    </FieldRow>
+                                    <FieldRow label="Phone">
+                                      <input type="tel" value={details.noncustodialCriminalHistory.paroleOfficerPhone} onChange={(e) => updateCriminalHistory({ paroleOfficerPhone: e.target.value.replace(/[^\d]/g, '') })} maxLength={10} />
+                                    </FieldRow>
+                                  </>
+                                )}
+                              </>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  {activeSubSection === 'noncustodial-financial-accounts' && (() => {
+                    const financial = details.noncustodialFinancialAccounts ?? EMPTY_FINANCIAL_ACCOUNTS;
+                    return (
+                    <>
+                      <FormBar title={t('apply.hub.financialAccounts')} />
+
+                      {showFinancialAccountForm ? (
+                        <div className="animate-fade-in">
+                          <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                            Enter the financial account information for the noncustodial parent.
+                          </p>
+                          <div className="field-table">
+                            <FieldRow label="Institution/Bank Name" required>
+                              <input
+                                type="text"
+                                value={financialAccountDraft.institutionName}
+                                onChange={(e) => setFinancialAccountDraft((p) => ({ ...p, institutionName: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="Account Type">
+                              <input
+                                type="text"
+                                value={financialAccountDraft.accountType}
+                                onChange={(e) => setFinancialAccountDraft((p) => ({ ...p, accountType: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="Account Number">
+                              <input
+                                type="text"
+                                value={financialAccountDraft.accountNumber}
+                                onChange={(e) => setFinancialAccountDraft((p) => ({ ...p, accountNumber: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="Account Value">
+                              <input
+                                type="number"
+                                min={0}
+                                value={financialAccountDraft.accountValue}
+                                onChange={(e) => setFinancialAccountDraft((p) => ({ ...p, accountValue: e.target.value }))}
+                              />
+                            </FieldRow>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                            If you know of any financial accounts for the noncustodial parent, click the add financial accounts link below.
+                          </p>
+                          <div className="field-table">
+                            <FieldRow label="Is the noncustodial parent currently in bankruptcy?">
+                              <TriRadio
+                                name="financial-bankruptcy"
+                                value={financial.inBankruptcy}
+                                onChange={(v) => updateFinancialAccounts({ inBankruptcy: v as FinancialAccountsInfo['inBankruptcy'] })}
+                                options={[{ value: 'yes', label: t('apply.common.yes') }, { value: 'no', label: t('apply.common.no') }, { value: 'unknown', label: t('apply.common.unknown') }]}
+                              />
+                            </FieldRow>
+                          </div>
+
+                          {financial.accounts.length < MAX_FINANCIAL_ACCOUNTS ? (
+                            <button
+                              type="button"
+                              className="apply-btn apply-btn-primary"
+                              style={{ margin: '12px 0' }}
+                              onClick={() => {
+                                setError('');
+                                setFinancialAccountDraft(EMPTY_FINANCIAL_ACCOUNT);
+                                setShowFinancialAccountForm(true);
+                              }}
+                            >
+                              <Plus size={16} strokeWidth={2} />
+                              Add a financial account
+                            </button>
+                          ) : (
+                            <InfoBanner>
+                              You have reached the maximum number of financial accounts ({MAX_FINANCIAL_ACCOUNTS}).
+                            </InfoBanner>
+                          )}
+
+                          <FormBar title="Financial Accounts" />
+                          {financial.accounts.length === 0 ? (
+                            <p className="apply-step-subtitle" style={{ padding: '8px 0' }}>
+                              There are no financial accounts at this time.
+                            </p>
+                          ) : (
+                            <div className="sof-table-container">
+                              <table className="sof-minimal-table">
+                                <thead>
+                                  <tr>
+                                    <th>Institution/Bank Name</th>
+                                    <th>Account Type</th>
+                                    <th>Account Number</th>
+                                    <th>Account Value</th>
+                                    <th style={{ width: 80, textAlign: 'center' }}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {financial.accounts.map((account) => (
+                                    <tr key={account.id}>
+                                      <td style={{ fontWeight: 600 }}>{account.institutionName}</td>
+                                      <td>{account.accountType || '—'}</td>
+                                      <td>{account.accountNumber || '—'}</td>
+                                      <td>{account.accountValue ? `$${account.accountValue}` : '—'}</td>
+                                      <td>
+                                        <button
+                                          type="button"
+                                          className="sof-table-remove-btn"
+                                          onClick={() => removeFinancialAccount(account.id)}
+                                          title="Remove Financial Account"
+                                          style={{ margin: '0 auto' }}
+                                        >
+                                          <X size={16} strokeWidth={2} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          <p className="empty-state-footer-text">(Maximum number of financial accounts {MAX_FINANCIAL_ACCOUNTS})</p>
+                        </>
+                      )}
+                    </>
+                    );
+                  })()}
+
+                  {activeSubSection === 'noncustodial-license' && (() => {
+                    const license = details.noncustodialLicense ?? EMPTY_LICENSE;
+                    return (
+                    <>
+                      <FormBar title={t('apply.hub.license')} />
+                      <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                        Enter the license information for the noncustodial parent.
+                      </p>
+                      <div className="field-table">
+                        <FieldRow label="Driver's License Number">
+                          <input
+                            type="text"
+                            value={license.driversLicenseNumber}
+                            onChange={(e) => updateLicense({ driversLicenseNumber: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label="License State">
+                          <select
+                            value={license.driversLicenseState}
+                            onChange={(e) => updateLicense({ driversLicenseState: e.target.value })}
+                          >
+                            <option value="">{t('field.pleaseSelect')}</option>
+                            {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </FieldRow>
+                        <FieldRow label="Professional License Held?">
+                          <TriRadio
+                            name="professional-license-held"
+                            value={license.professionalLicenseHeld}
+                            onChange={(v) => updateLicense({ professionalLicenseHeld: v as LicenseInfo['professionalLicenseHeld'] })}
+                            options={[{ value: 'yes', label: t('apply.common.yes') }, { value: 'no', label: t('apply.common.no') }]}
+                          />
+                        </FieldRow>
+
+                        {license.professionalLicenseHeld === 'yes' && (
+                          <>
+                            <FieldRow label="License Type">
+                              <select
+                                value={license.licenseType}
+                                onChange={(e) => updateLicense({ licenseType: e.target.value })}
+                              >
+                                <option value="">{t('field.pleaseSelect')}</option>
+                                {PROFESSIONAL_LICENSE_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </FieldRow>
+                            <FieldRow label="License Number">
+                              <input
+                                type="text"
+                                value={license.licenseNumber}
+                                onChange={(e) => updateLicense({ licenseNumber: e.target.value })}
+                              />
+                            </FieldRow>
+                            <FieldRow label="Issuing State">
+                              <select
+                                value={license.issuingState}
+                                onChange={(e) => updateLicense({ issuingState: e.target.value })}
+                              >
+                                <option value="">{t('field.pleaseSelect')}</option>
+                                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </FieldRow>
+                          </>
+                        )}
+                      </div>
+                    </>
+                    );
+                  })()}
+
+                  {activeSubSection === 'noncustodial-vehicles' && (() => {
+                    const vehicles = details.noncustodialVehicles ?? [];
+                    return (
+                    <>
+                      <FormBar title={t('apply.hub.vehicles')} />
+
+                      {showVehicleForm ? (
+                        <div className="animate-fade-in">
+                          <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                            Enter the vehicle information for the noncustodial parent.
+                          </p>
+                          <div className="field-table">
+                            <FieldRow label="Type" required>
+                              <select
+                                value={vehicleDraft.type}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, type: e.target.value }))}
+                              >
+                                <option value="">{t('field.pleaseSelect')}</option>
+                                {VEHICLE_TYPE_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+                              </select>
+                            </FieldRow>
+                            <FieldRow label="Year">
+                              <select
+                                value={vehicleDraft.year}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, year: e.target.value }))}
+                              >
+                                <option value="">{t('field.pleaseSelect')}</option>
+                                {VEHICLE_YEAR_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
+                              </select>
+                            </FieldRow>
+                            <FieldRow label="Make">
+                              <input
+                                type="text"
+                                value={vehicleDraft.make}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, make: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="Model">
+                              <input
+                                type="text"
+                                value={vehicleDraft.model}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, model: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="License Number">
+                              <input
+                                type="text"
+                                value={vehicleDraft.licenseNumber}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, licenseNumber: e.target.value }))}
+                              />
+                            </FieldRow>
+                            <FieldRow label="State">
+                              <select
+                                value={vehicleDraft.state}
+                                onChange={(e) => setVehicleDraft((p) => ({ ...p, state: e.target.value }))}
+                              >
+                                <option value="">{t('field.pleaseSelect')}</option>
+                                {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                              </select>
+                            </FieldRow>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <p className="apply-step-subtitle" style={{ marginBottom: 4 }}>
+                            If you know of any vehicles for the noncustodial parent, click the add vehicles link below.
+                          </p>
+                          <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                            Vehicle types may include boats, cars, motorcycles, snowmobiles, trucks, or other types.
+                          </p>
+
+                          {vehicles.length < MAX_VEHICLES ? (
+                            <button
+                              type="button"
+                              className="apply-btn apply-btn-primary"
+                              style={{ margin: '12px 0' }}
+                              onClick={() => {
+                                setError('');
+                                setVehicleDraft(EMPTY_VEHICLE);
+                                setShowVehicleForm(true);
+                              }}
+                            >
+                              <Plus size={16} strokeWidth={2} />
+                              Add a vehicle
+                            </button>
+                          ) : (
+                            <InfoBanner>
+                              You have reached the maximum number of vehicles ({MAX_VEHICLES}).
+                            </InfoBanner>
+                          )}
+
+                          <FormBar title="Vehicles" />
+                          {vehicles.length === 0 ? (
+                            <p className="apply-step-subtitle" style={{ padding: '8px 0' }}>
+                              There are no vehicles at this time.
+                            </p>
+                          ) : (
+                            <div className="sof-table-container">
+                              <table className="sof-minimal-table">
+                                <thead>
+                                  <tr>
+                                    <th>Type</th>
+                                    <th>Year</th>
+                                    <th>Make</th>
+                                    <th>Model</th>
+                                    <th>License</th>
+                                    <th style={{ width: 80, textAlign: 'center' }}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {vehicles.map((vehicle) => (
+                                    <tr key={vehicle.id}>
+                                      <td style={{ fontWeight: 600 }}>{vehicle.type}</td>
+                                      <td>{vehicle.year || '—'}</td>
+                                      <td>{vehicle.make || '—'}</td>
+                                      <td>{vehicle.model || '—'}</td>
+                                      <td>{[vehicle.licenseNumber, vehicle.state].filter(Boolean).join(' / ') || '—'}</td>
+                                      <td>
+                                        <button
+                                          type="button"
+                                          className="sof-table-remove-btn"
+                                          onClick={() => removeVehicle(vehicle.id)}
+                                          title="Remove Vehicle"
+                                          style={{ margin: '0 auto' }}
+                                        >
+                                          <X size={16} strokeWidth={2} />
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          <p className="empty-state-footer-text">(Maximum number of vehicles {MAX_VEHICLES})</p>
+                        </>
+                      )}
+                    </>
+                    );
+                  })()}
+
+                  {activeSubSection === 'noncustodial-property' && (() => {
+                    const property = details.noncustodialProperty ?? EMPTY_PROPERTY;
+                    return (
+                    <>
+                      <FormBar title={t('apply.hub.property')} />
+                      <p className="apply-step-subtitle" style={{ marginBottom: 12 }}>
+                        Enter the property information for the noncustodial parent.
+                      </p>
+                      <div className="field-table">
+                        <FieldRow label="Description">
+                          <input
+                            type="text"
+                            value={property.description}
+                            onChange={(e) => updateProperty({ description: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label="Estimated Value">
+                          <input
+                            type="number"
+                            min={0}
+                            value={property.estimatedValue}
+                            onChange={(e) => updateProperty({ estimatedValue: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label="Address Line 1">
+                          <input
+                            type="text"
+                            value={property.addressLine1}
+                            onChange={(e) => updateProperty({ addressLine1: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label="Address Line 2">
+                          <input
+                            type="text"
+                            value={property.addressLine2}
+                            onChange={(e) => updateProperty({ addressLine2: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label={t('field.city')}>
+                          <input
+                            type="text"
+                            value={property.city}
+                            onChange={(e) => updateProperty({ city: e.target.value })}
+                          />
+                        </FieldRow>
+                        <FieldRow label={t('field.state')}>
+                          <select
+                            value={property.state}
+                            onChange={(e) => updateProperty({ state: e.target.value })}
+                          >
+                            <option value="">{t('field.pleaseSelect')}</option>
+                            {US_STATES.map((s) => <option key={s} value={s}>{s}</option>)}
+                          </select>
+                        </FieldRow>
+                        <FieldRow label="Zip">
+                          <input
+                            type="text"
+                            value={property.zip}
+                            onChange={(e) => updateProperty({ zip: e.target.value.replace(/[^\d-]/g, '') })}
+                            maxLength={10}
+                          />
+                        </FieldRow>
+                        <FieldRow label="Lien Holder">
+                          <input
+                            type="text"
+                            value={property.lienHolder}
+                            onChange={(e) => updateProperty({ lienHolder: e.target.value })}
+                          />
+                        </FieldRow>
+                      </div>
+                    </>
+                    );
+                  })()}
 
                   {activeSubSection === 'other-support-orders' && (
                     <>
@@ -3978,7 +5082,7 @@ export default function ApplyWizard() {
                                     {MARITAL_STATUS_OPTIONS.map((m) => <option key={m} value={m}>{m}</option>)}
                                   </select>
                                 </FieldRow>
-                                {details.noncustodialName.maritalStatus === 'Married' && (
+                                {details.noncustodialName.maritalStatus && details.noncustodialName.maritalStatus !== 'Single' && (
                                   <>
                                     <FieldRow label="Maiden Name">
                                       <input type="text" value={details.noncustodialName.maidenName} onChange={(e) => updateNoncustodialName({ maidenName: e.target.value })} />
@@ -4202,6 +5306,13 @@ export default function ApplyWizard() {
                               <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{details.noncustodialName.ssn || '—'}</span></div>
                               <div className="review-data-item"><span className="review-item-label">Birth details</span><span className="review-item-value">{details.noncustodialName.birthDate || '—'} ({[details.noncustodialName.birthCity, details.noncustodialName.birthState].filter(Boolean).join(', ') || '—'})</span></div>
                               <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.noncustodialName.maritalStatus || '—'}</span></div>
+                              {details.noncustodialName.maritalStatus && details.noncustodialName.maritalStatus !== 'Single' && (
+                                <>
+                                  <div className="review-data-item"><span className="review-item-label">Maiden Name</span><span className="review-item-value">{details.noncustodialName.maidenName || '—'}</span></div>
+                                  <div className="review-data-item"><span className="review-item-label">Spouse Name</span><span className="review-item-value">{details.noncustodialName.spouseName || '—'}</span></div>
+                                  <div className="review-data-item"><span className="review-item-label">Date Married</span><span className="review-item-value">{details.noncustodialName.dateMarried || '—'}</span></div>
+                                </>
+                              )}
                               <div className="review-data-item"><span className="review-item-label">Physical Description</span><span className="review-item-value">
                                 {[
                                   details.noncustodialDescription.hair ? `Hair: ${details.noncustodialDescription.hair}` : '',
@@ -4220,6 +5331,13 @@ export default function ApplyWizard() {
                               <div className="review-data-item"><span className="review-item-label">Estimated Monthly Income</span><span className="review-item-value">${incomeTotal.toFixed(2)}</span></div>
                               <div className="review-data-item"><span className="review-item-label">Mother&apos;s Details</span><span className="review-item-value">{[details.noncustodialMother.firstName, details.noncustodialMother.lastName].filter(Boolean).join(' ') ? `${[details.noncustodialMother.firstName, details.noncustodialMother.lastName].filter(Boolean).join(' ')} ${details.noncustodialMother.deceased === 'yes' ? '(Deceased)' : ''}` : '—'}</span></div>
                               <div className="review-data-item"><span className="review-item-label">Father&apos;s Details</span><span className="review-item-value">{[details.noncustodialFather.firstName, details.noncustodialFather.lastName].filter(Boolean).join(' ') ? `${[details.noncustodialFather.firstName, details.noncustodialFather.lastName].filter(Boolean).join(' ')} ${details.noncustodialFather.deceased === 'yes' ? '(Deceased)' : ''}` : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Contacts</span><span className="review-item-value">{form.contacts.length > 0 ? form.contacts.map((c) => [c.firstName, c.lastName].filter(Boolean).join(' ')).join(', ') : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Military Status</span><span className="review-item-value">{details.noncustodialMilitary.status || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Criminal Record</span><span className="review-item-value">{details.noncustodialCriminalHistory.hasCriminalRecord ? details.noncustodialCriminalHistory.hasCriminalRecord.charAt(0).toUpperCase() + details.noncustodialCriminalHistory.hasCriminalRecord.slice(1) : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Financial Accounts</span><span className="review-item-value">{(details.noncustodialFinancialAccounts?.accounts?.length ?? 0) > 0 ? details.noncustodialFinancialAccounts.accounts.map((a) => a.institutionName).filter(Boolean).join(', ') : '—'}{details.noncustodialFinancialAccounts?.inBankruptcy === 'yes' ? ' (In bankruptcy)' : ''}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">License</span><span className="review-item-value">{[details.noncustodialLicense?.driversLicenseNumber ? `DL: ${details.noncustodialLicense.driversLicenseNumber}${details.noncustodialLicense.driversLicenseState ? ` (${details.noncustodialLicense.driversLicenseState})` : ''}` : '', details.noncustodialLicense?.professionalLicenseHeld === 'yes' ? `Professional: ${[details.noncustodialLicense.licenseType, details.noncustodialLicense.licenseNumber].filter(Boolean).join(' ') || 'Yes'}` : ''].filter(Boolean).join(', ') || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Vehicles</span><span className="review-item-value">{(details.noncustodialVehicles?.length ?? 0) > 0 ? details.noncustodialVehicles.map((v) => [v.year, v.make, v.model].filter(Boolean).join(' ') || v.type).join(', ') : '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Property</span><span className="review-item-value">{[details.noncustodialProperty?.description, details.noncustodialProperty?.estimatedValue ? `$${details.noncustodialProperty.estimatedValue}` : '', [details.noncustodialProperty?.addressLine1, details.noncustodialProperty?.city, details.noncustodialProperty?.state, details.noncustodialProperty?.zip].filter(Boolean).join(', ')].filter(Boolean).join(' — ') || '—'}</span></div>
                             </div>
                           )}
                         </div>
@@ -4548,6 +5666,52 @@ export default function ApplyWizard() {
                     >
                       <Plus size={16} strokeWidth={2} />
                       Save Support Order
+                    </button>
+                  </>
+                ) : currentStep.key === 'household' && activeSubSection === 'noncustodial-financial-accounts' && showFinancialAccountForm ? (
+                  <>
+                    <button
+                      type="button"
+                      className="apply-btn apply-btn-outline"
+                      onClick={() => {
+                        setError('');
+                        setShowFinancialAccountForm(false);
+                        setFinancialAccountDraft(EMPTY_FINANCIAL_ACCOUNT);
+                      }}
+                    >
+                      <X size={16} strokeWidth={2} />
+                      {t('field.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className="apply-btn apply-btn-primary"
+                      onClick={handleSaveFinancialAccount}
+                    >
+                      <Plus size={16} strokeWidth={2} />
+                      Add
+                    </button>
+                  </>
+                ) : currentStep.key === 'household' && activeSubSection === 'noncustodial-vehicles' && showVehicleForm ? (
+                  <>
+                    <button
+                      type="button"
+                      className="apply-btn apply-btn-outline"
+                      onClick={() => {
+                        setError('');
+                        setShowVehicleForm(false);
+                        setVehicleDraft(EMPTY_VEHICLE);
+                      }}
+                    >
+                      <X size={16} strokeWidth={2} />
+                      {t('field.cancel')}
+                    </button>
+                    <button
+                      type="button"
+                      className="apply-btn apply-btn-primary"
+                      onClick={handleSaveVehicle}
+                    >
+                      <Plus size={16} strokeWidth={2} />
+                      Add
                     </button>
                   </>
                 ) : currentStep.key === 'household' && activeSubSection === 'custodial-children' && form.assistanceType === 'full' && showChildForm ? (

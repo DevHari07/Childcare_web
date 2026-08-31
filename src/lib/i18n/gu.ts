@@ -256,6 +256,7 @@ const gu: Record<TranslationKey, string> = {
   'apply.hub.income': 'આવક',
   'apply.hub.mother': 'માતા',
   'apply.hub.father': 'પિતા',
+  'apply.hub.contacts': 'સંપર્કો',
   'apply.hub.siblings': 'ભાઈ-બહેન',
   'apply.hub.military': 'લશ્કરી સેવા',
   'apply.hub.criminalHistory': 'ગુનાહિત ઇતિહાસ',
@@ -333,6 +334,28 @@ const gu: Record<TranslationKey, string> = {
   'field.knowsAddressQuestion': 'શું તમે નોનકસ્ટોડિયલ પેરેન્ટનું વર્તમાન રહેણાંક સરનામું જાણો છો?',
   'field.deceased': 'મૃત્યુ પામેલ',
   'field.maidenNameOnly': 'પિયરનું નામ',
+  'field.height': 'ઊંચાઈ',
+  'field.phone': 'ફોન',
+
+  'field.militaryStatus': 'લશ્કરી સ્થિતિ',
+  'field.militaryBranch': 'લશ્કરી શાખા',
+  'field.serviceNumber': 'સેવા નંબર',
+  'field.datesServed': 'સેવા આપેલી તારીખો',
+
+  'field.hasCriminalRecord': 'શું બિન-કસ્ટોડિયલ પેરેન્ટનો ગુનાહિત રેકોર્ડ છે?',
+  'field.incarcerated': 'શું બિન-કસ્ટોડિયલ પેરેન્ટ કેદમાં છે?',
+  'field.institutionName': 'સંસ્થાનું નામ',
+  'field.onParole': 'શું બિન-કસ્ટોડિયલ પેરેન્ટ પેરોલ પર છે?',
+  'field.paroleOfficer': 'પેરોલ ઓફિસર',
+
+  'field.orderType': 'ઓર્ડરનો પ્રકાર',
+  'field.orderNumber': 'ઓર્ડર નંબર',
+  'field.stateFiled': 'દાખલ કરેલ રાજ્ય',
+  'field.dateFiled': 'દાખલ કરવાની તારીખ',
+  'field.amount': 'રકમ',
+  'field.frequency': 'આવર્તન',
+  'field.startDate': 'શરૂઆતની તારીખ',
+  'field.endDate': 'સમાપ્તિ તારીખ',
 
   // આવક ફોર્મ
   'income.title': 'આવક',

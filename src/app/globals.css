@@ -2543,18 +2543,18 @@ h3 {
 /* Info banner */
 .info-banner {
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  gap: 10px;
+  align-items: center;
   background-color: #eef3ff;
   border: 1px solid #d6e3fb;
   border-radius: var(--radius-md);
-  padding: 16px 18px;
-  margin-bottom: 24px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
 }
 
 .info-banner-icon {
-  width: 26px;
-  height: 26px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 1.5px solid var(--primary-light);
   color: var(--primary-light);
@@ -2568,6 +2568,25 @@ h3 {
   font-size: 13.5px;
   color: #334155;
   line-height: 1.55;
+}
+
+/* Compact reminder variant (e.g. "at least one child required") - a quiet
+   amber chip that hugs its text instead of a full-width blue bar. */
+.info-banner-alert {
+  display: inline-flex;
+  width: auto;
+  background-color: #fef9e7;
+  border-color: #f5dd90;
+}
+
+.info-banner-alert .info-banner-icon {
+  border-color: #b7791f;
+  color: #b7791f;
+}
+
+.info-banner-alert .info-banner-text {
+  color: #7c5e10;
+  font-weight: 600;
 }
 
 /* Choice box (bordered label + radio options) */
@@ -3798,6 +3817,35 @@ h3 {
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
   background: var(--white);
+}
+
+.sub-section-progress-track {
+  scrollbar-width: none;
+}
+
+.sub-section-progress-track::-webkit-scrollbar {
+  display: none;
+}
+
+.sub-section-scroll-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-color);
+  background: var(--white);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s var(--ease);
+}
+
+.sub-section-scroll-btn:hover {
+  border-color: var(--primary-light);
+  color: var(--primary-light);
+  background: #f8fafc;
 }
 
 .sof-minimal-table {

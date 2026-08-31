@@ -257,6 +257,7 @@ const en = {
   'apply.hub.income': 'Income',
   'apply.hub.mother': 'Mother',
   'apply.hub.father': 'Father',
+  'apply.hub.contacts': 'Contacts',
   'apply.hub.siblings': 'Siblings',
   'apply.hub.military': 'Military',
   'apply.hub.criminalHistory': 'Criminal History',
@@ -334,6 +335,31 @@ const en = {
   'field.knowsAddressQuestion': "Do you know the noncustodial parent's current residential address?",
   'field.deceased': 'Deceased',
   'field.maidenNameOnly': 'Maiden Name',
+  'field.height': 'Height',
+  'field.phone': 'Phone',
+
+  // Military sub-form
+  'field.militaryStatus': 'Military Status',
+  'field.militaryBranch': 'Military Branch',
+  'field.serviceNumber': 'Service Number',
+  'field.datesServed': 'Dates Served',
+
+  // Criminal History sub-form
+  'field.hasCriminalRecord': 'Does the noncustodial parent have a criminal record?',
+  'field.incarcerated': 'Is noncustodial parent Incarcerated?',
+  'field.institutionName': 'Institution Name',
+  'field.onParole': 'Is noncustodial parent on Parole?',
+  'field.paroleOfficer': 'Parole Officer',
+
+  // Support order sub-form
+  'field.orderType': 'Order Type',
+  'field.orderNumber': 'Order Number',
+  'field.stateFiled': 'State Filed',
+  'field.dateFiled': 'Date Filed',
+  'field.amount': 'Amount',
+  'field.frequency': 'Frequency',
+  'field.startDate': 'Start Date',
+  'field.endDate': 'End Date',
 
   // Income sub-form
   'income.title': 'Income',

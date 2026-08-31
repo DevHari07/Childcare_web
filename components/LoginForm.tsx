@@ -72,17 +72,6 @@ export default function LoginForm() {
           <p className="left-desc">
             {t('login.desc')}
           </p>
-
-          <div className="left-info-grid">
-            <div className="left-info-item">
-              <span className="info-stat">{t('login.stat1Num')}</span>
-              <span className="info-lbl">{t('login.stat1Label')}</span>
-            </div>
-            <div className="left-info-item">
-              <span className="info-stat">{t('login.stat2Num')}</span>
-              <span className="info-lbl">{t('login.stat2Label')}</span>
-            </div>
-          </div>
         </div>
       </div>
 
