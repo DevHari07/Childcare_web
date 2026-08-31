@@ -7,6 +7,7 @@ import { Home, HeartHandshake, Info, LogOut } from 'lucide-react';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
+import { signOutCurrentUser } from '@/lib/cognitoAuth';
 
 export default function Header() {
   const router = useRouter();
@@ -26,6 +27,7 @@ export default function Header() {
   }, []);
 
   const handleLogout = () => {
+    signOutCurrentUser();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setUser(null);
