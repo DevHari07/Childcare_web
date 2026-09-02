@@ -193,9 +193,9 @@ const en = {
   'apply.step1.openSavedDesc': 'Resume an application you started earlier and saved.',
   'apply.step1.noSavedNote': 'No saved application was found for your account yet.',
   'apply.step1.iAmThe': 'I am the:',
-  'apply.step1.parentTitle': 'Parent or Legal Guardian',
+  'apply.step1.parentTitle': 'Custodial parent',
   'apply.step1.parentDesc': 'Biological, adoptive, or legal guardian who lives with the child.',
-  'apply.step1.relativeTitle': 'Relative or Foster Caregiver',
+  'apply.step1.relativeTitle': 'Non Custodial Parent',
   'apply.step1.relativeDesc': 'Caretaker relative or foster parent who lives with the child.',
 
   // Step 2: Program Agreement

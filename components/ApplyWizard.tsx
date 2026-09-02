@@ -136,6 +136,10 @@ interface ApplyFormData {
   withholdConsent: 'yes' | 'no' | '';
   redeterminationAck: boolean;
   rightsChecks: boolean[];
+  // Non-custodial parent (ND Child Support) consent path
+  ncpAgreementChecks: boolean[];
+  ncpNonrepChecks: boolean[];
+  ncpServiceType: string;
   assistanceType: 'full' | 'search_only' | '';
   receivesPublicAssistance: 'yes' | 'no' | '';
   fullName: string;
@@ -163,6 +167,106 @@ const RIGHTS_ITEM_KEYS: TranslationKey[] = [
   'apply.step3.item1', 'apply.step3.item2', 'apply.step3.item3',
   'apply.step3.item4', 'apply.step3.item5', 'apply.step3.item6',
 ];
+
+// ── Non-custodial parent path — ND Child Support consent screens ─────────────
+// Shown in "Consents & Services" when the applicant is the Non-Custodial Parent.
+interface NcpAgreementItem { text: string; strong?: boolean; bullets?: string[]; }
+const NCP_AGREEMENT_ITEMS: NcpAgreementItem[] = [
+  {
+    text: 'Upon approval of this application contract, all child support services will be provided. These activities may include:',
+    bullets: [
+      'Establishment of paternity',
+      'Establishment of court ordered child and medical support obligations',
+      'Enforcement of court ordered child support collections and medical support',
+    ],
+  },
+  { text: 'Even after the services I apply for have been provided, all services will continue until this application contract is canceled by written request from the noncustodial parent, to the Regional Child Support Unit (RCSU).' },
+  {
+    text: 'COSTS FOR SERVICE(S):',
+    strong: true,
+    bullets: ['General Application: fee of $1, which is paid out of state funds.'],
+  },
+  {
+    text: 'USE AND DISCLOSURE OF INFORMATION:',
+    strong: true,
+    bullets: [
+      'Information provided by the noncustodial parent to the North Dakota Child Support Agency (hereinafter referred to as CSA) or RCSU may be disclosed to, and used by, public officials who require such information in connection with their official duties.',
+      'Information provided by the noncustodial parent to CSA or RCSU will be used for purposes directly connected with the administration of CSA or RCSU. This may include the use and disclosure of social security numbers of the noncustodial parent and children.',
+      'CSA and RCSU will follow all Federal and State confidentiality requirements, in regard to safeguarding of information.',
+    ],
+  },
+  { text: "The noncustodial parent's case may be closed if the noncustodial parent fails to cooperate with the RCSU in providing child support activities and services." },
+  { text: 'This application contract for IV-D services may be canceled by request from the noncustodial parent, to the RCSU.' },
+  { text: 'The RCSU Attorney does not represent the noncustodial parent or the custodial parent in any action taken by the RCSU. Therefore, the RCSU Attorney is not the private attorney of either party. There is no creation of an attorney-client relationship between either party and the RCSU Attorney. The RCSU Attorney represents the best interests of the people of North Dakota according to Sections 14-09-09.26 and 14-09-09.27 of the North Dakota Century Code.' },
+  { text: 'The Department of Health and Human Services makes available all services and assistance without regard to race, color, religion, national origin, age, sex, political beliefs, disability or status with respect to marriage or public assistance. The Department of Health and Human Services makes its programs accessible to persons with disabilities. Persons needing accommodation or who have questions or complaints regarding the provision of services should contact their local Child Support Unit or the State Child Support Agency at (701) 328-3582 or toll free in ND: 1-800-755-8530; TDD: 1-800-366-6888.' },
+  { text: 'I have received a copy of the services and responsibilities notice (DN1200).' },
+];
+
+const NCP_NONREP_ITEMS: string[] = [
+  'The state of North Dakota has a lawyer to assist in securing child support but this lawyer is not my lawyer.',
+  'I have the right to hire my own lawyer, at my expense, if I want.',
+  "Child support officials and the state's lawyer may work on my case to locate a noncustodial parent, establish paternity, secure repayment of government benefits (such as TANF and Medicaid), establish medical support, enforce medical support, establish child support, enforce child support, or modify an order for support. The state has an interest in doing all these things. The state's lawyer will represent the state's interest.",
+  "The state's lawyer will not be able to help me with other matters such as child custody, visitation, or property settlements, even though these things may seem connected to child support. If I want a lawyer to help me with these other matters, I must get my own lawyer.",
+  "I must cooperate with child support officials and the state's lawyer if I want to receive child support services.",
+  "When I give information to child support officials or the state's lawyer, that information may be used if the officials or the state's lawyer think it is necessary or appropriate to use it. I will not be able to tell them that the information cannot be used. I will not be able to tell them how to use the information.",
+];
+
+interface NcpServiceOption { value: string; title: string; bullets: string[]; note?: string; }
+const NCP_SERVICE_TYPES: NcpServiceOption[] = [
+  {
+    value: 'paternity',
+    title: 'Paternity Services',
+    bullets: [
+      'Interviewing noncustodial parent and custodial parent.',
+      'Genetic testing of noncustodial parent, custodial parent, and children. The RCSU will pay the costs for genetic testing.',
+      'Establishing a court order for paternity and child support, as well as enforcing the child support order.',
+    ],
+  },
+  {
+    value: 'review_adjustment',
+    title: 'Review and Adjustment Services',
+    bullets: [
+      "The RCSU is authorized to undertake a review of the noncustodial parent's child support obligation according to N.D.C.C. Sections 14-09-08.4 through 14-09-08.9.",
+      'The noncustodial parent hereby agrees to provide the RCSU with all information necessary to conduct a review of his/her child support obligation.',
+      'The noncustodial parent understands that the review may result in a finding that his/her support obligation should be increased as well as the possibility that the child support obligation should be decreased.',
+      'The noncustodial parent understands that once a review of the child support obligation has begun, the review will not be stopped unless: 1) a written request from both the noncustodial parent and the other party to stop the review is received by the RCSU, or 2) this contract is canceled by a written request from the noncustodial parent to the RCSU and the other party has not requested continuation of the review by making a separate application for services.',
+      "The noncustodial parent understands that if the other party wishes to continue with the review after the noncustodial parent has indicated a desire to discontinue the review, the RCSU will take whatever steps are necessary to complete the review over the noncustodial parent's objections.",
+      'The noncustodial parent understands that should a review be terminated once commenced, the RCSU reserves the right to refuse acceptance of another request for review by the noncustodial parent for a time period of 12 months from termination date.',
+      'The noncustodial parent understands that the review process not only subjects the child support obligation to review, but also that the availability and affordability of health insurance coverage for the children will be researched. If appropriate, the judgment or order shall be amended to require such coverage.',
+      'If not already covered, the RCSU will ask the court to allocate the tax dependency exemptions for the children.',
+    ],
+  },
+  {
+    value: 'alternate_payment',
+    title: 'Alternate Payment Arrangement in Place of Immediate Income Withholding',
+    bullets: [
+      'The noncustodial parent understands that he or she must complete a separate application to have the child support obligation paid through electronic fund transfer from his or her bank account instead of through immediate income withholding. Electronic fund transfer from a bank account is referred to as an alternate payment arrangement in the following paragraphs.',
+      "The noncustodial parent understands that CSA will only approve a request for an alternate payment arrangement if it finds that there is good cause to do so. In deciding whether good cause exists, CSA will review the noncustodial parent's payment record to see if the noncustodial parent has paid the full amount of the child support obligation for at least the past nine (9) months (or since the order was entered if the order is less than nine (9) months old).",
+      "The noncustodial parent understands that he or she must provide bank account information to CSA. If an alternate payment arrangement is approved, CSA will work with the noncustodial parent's bank to set it up and will also terminate any income withholding order in effect. The noncustodial parent must pay any processing fees associated with the alternate payment arrangement.",
+      'The noncustodial parent understands that the other party will be notified of the alternate payment arrangement and will have the opportunity to object to it.',
+      'The noncustodial parent understands that if payments are not made in full and on time under an alternate payment arrangement, the RCSU may terminate the arrangement and reinstate an income withholding order.',
+    ],
+  },
+  {
+    value: 'suspension_interest',
+    title: 'Suspension of Interest on Unpaid Child Support',
+    bullets: [
+      'The noncustodial parent understands that the RCSU may suspend interest on the noncustodial parent’s unpaid child support if the noncustodial parent is a good payer. In this context, "good payer" means that the noncustodial parent has paid the full amount of current child support plus the amount required by law toward the past-due child support for: 1) the past nine (9) consecutive months (or since the order was entered if the order is less than nine (9) months old) if the noncustodial parent is under income withholding; or 2) the past 12 consecutive months (or since the order was entered if the order is less than 12 months old) if the noncustodial is self-employed or not under income withholding for another reason.',
+      'The noncustodial parent understands that if interest is suspended because he or she is a good payer, the custodial parent will be notified of the suspension of interest and will have the opportunity to object to it.',
+      'The noncustodial parent understands that if interest is suspended and he or she stops being a good payer, the RCSU will start charging interest again.',
+    ],
+  },
+  {
+    value: 'other',
+    title: 'Other',
+    bullets: [],
+    note: 'Use the "Other Information" field that appears later in this application to explain the other service(s) you are applying for.',
+  },
+];
+
+const NCP_SERVICE_LABEL: Record<string, string> = Object.fromEntries(
+  NCP_SERVICE_TYPES.map((s) => [s.value, s.title]),
+);
 
 const STEPS = [
   { key: 'apply', icon: FileText },
@@ -666,6 +770,9 @@ const EMPTY_FORM: ApplyFormData = {
   withholdConsent: '',
   redeterminationAck: false,
   rightsChecks: RIGHTS_ITEM_KEYS.map(() => false),
+  ncpAgreementChecks: NCP_AGREEMENT_ITEMS.map(() => false),
+  ncpNonrepChecks: NCP_NONREP_ITEMS.map(() => false),
+  ncpServiceType: '',
   assistanceType: '',
   receivesPublicAssistance: '',
   fullName: '',
@@ -787,7 +894,7 @@ export default function ApplyWizard() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/extract', {
+      const response = await fetch('http://localhost:8010/api/extract', {
         method: 'POST',
         body: formData,
       });
@@ -1390,17 +1497,32 @@ export default function ApplyWizard() {
         if (!form.applicantType) return t('apply.step1.iAmThe');
         return '';
       case 'agreement':
+        if (form.applicantType === 'relative_caregiver') {
+          if ((form.ncpAgreementChecks ?? []).some((c) => !c) || (form.ncpAgreementChecks ?? []).length === 0)
+            return 'Select the checkbox next to each statement once you have read the statement.';
+          return '';
+        }
         if (form.agreementChecks.some((c) => !c)) return t('apply.step2.subtitle');
         if (!form.withholdConsent) return t('apply.step2.withholdQuestion');
         if (!form.redeterminationAck) return t('apply.step2.redetermination');
         return '';
       case 'rights':
+        if (form.applicantType === 'relative_caregiver') {
+          if ((form.ncpNonrepChecks ?? []).some((c) => !c) || (form.ncpNonrepChecks ?? []).length === 0)
+            return 'Select the checkbox next to each statement once you have read the statement.';
+          return '';
+        }
         if (form.rightsChecks.some((c) => !c)) return t('apply.step3.infoBanner');
         return '';
       case 'assistance':
+        if (form.applicantType === 'relative_caregiver') {
+          if (!form.ncpServiceType) return 'Review the available services then select the service for which you would like to apply.';
+          return '';
+        }
         if (!form.assistanceType) return t('apply.step4.infoBanner');
         return '';
       case 'publicAssistance':
+        if (form.applicantType === 'relative_caregiver') return '';
         if (!form.receivesPublicAssistance) return t('apply.step5.question');
         return '';
       case 'household':
@@ -1417,6 +1539,19 @@ export default function ApplyWizard() {
       default:
         return '';
     }
+  };
+
+  // Non-custodial parent path skips the "public assistance" question.
+  const isStepSkipped = (index: number) =>
+    index >= 0 &&
+    index < STEPS.length &&
+    STEPS[index].key === 'publicAssistance' &&
+    form.applicantType === 'relative_caregiver';
+
+  const nextVisibleStep = (from: number, dir: 1 | -1) => {
+    let i = from + dir;
+    while (i > 0 && i < STEPS.length - 1 && isStepSkipped(i)) i += dir;
+    return Math.max(0, Math.min(i, STEPS.length - 1));
   };
 
   const goToStep = (index: number) => {
@@ -1448,7 +1583,7 @@ export default function ApplyWizard() {
       return;
     }
     setError('');
-    const next = Math.min(stepIndex + 1, STEPS.length - 1);
+    const next = nextVisibleStep(stepIndex, 1);
     setStepIndex(next);
     if (STEPS[next].key === 'household') {
       setActiveSubSection(null);
@@ -1465,7 +1600,7 @@ export default function ApplyWizard() {
       scrollCardToTop();
       return;
     }
-    const prev = Math.max(stepIndex - 1, 0);
+    const prev = nextVisibleStep(stepIndex, -1);
     setStepIndex(prev);
     if (STEPS[prev].key === 'household') {
       setActiveSubSection(null);
@@ -1518,6 +1653,22 @@ export default function ApplyWizard() {
       const next = [...prev.rightsChecks];
       next[idx] = !next[idx];
       return { ...prev, rightsChecks: next };
+    });
+  };
+
+  const toggleNcpAgreementCheck = (idx: number) => {
+    setForm((prev) => {
+      const next = [...(prev.ncpAgreementChecks ?? NCP_AGREEMENT_ITEMS.map(() => false))];
+      next[idx] = !next[idx];
+      return { ...prev, ncpAgreementChecks: next };
+    });
+  };
+
+  const toggleNcpNonrepCheck = (idx: number) => {
+    setForm((prev) => {
+      const next = [...(prev.ncpNonrepChecks ?? NCP_NONREP_ITEMS.map(() => false))];
+      next[idx] = !next[idx];
+      return { ...prev, ncpNonrepChecks: next };
     });
   };
 
@@ -2172,7 +2323,49 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'agreement' && (
+              {currentStep.key === 'agreement' && form.applicantType === 'relative_caregiver' && (
+                <div className="animate-fade-in">
+                  <StepHeading
+                    icon={Handshake}
+                    title="Agreement"
+                    subtitle="Select the checkbox next to each statement once you have read the statement."
+                  />
+
+                  <p className="ack-intro"><strong>I understand that:</strong></p>
+
+                  <div className="ack-list">
+                    {NCP_AGREEMENT_ITEMS.map((item, idx) => (
+                      <label key={idx} className={`ack-item ${(form.ncpAgreementChecks ?? [])[idx] ? 'checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean((form.ncpAgreementChecks ?? [])[idx])}
+                          onChange={() => toggleNcpAgreementCheck(idx)}
+                        />
+                        <span className="ack-text">
+                          <span style={item.strong ? { fontWeight: 700 } : undefined}>{item.text}</span>
+                          {item.bullets && item.bullets.length > 0 && (
+                            <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, listStyle: 'disc' }}>
+                              {item.bullets.map((b, bi) => (
+                                <li key={bi} style={{ margin: '2px 0' }}>{b}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {item.text.includes('(DN1200)') && (
+                            <a href="#dn1200" className="ack-link" onClick={(e) => e.preventDefault()}>
+                              <ExternalLink size={13} strokeWidth={2} />
+                              Print DN1200 notice
+                            </a>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <p className="required-note"><span className="req">*</span> {t('apply.required')}</p>
+                </div>
+              )}
+
+              {currentStep.key === 'agreement' && form.applicantType !== 'relative_caregiver' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Handshake}
@@ -2253,7 +2446,41 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'rights' && (
+              {currentStep.key === 'rights' && form.applicantType === 'relative_caregiver' && (
+                <div className="animate-fade-in">
+                  <StepHeading
+                    icon={ShieldCheck}
+                    title="Acknowledgement of Nonrepresentation"
+                    subtitle="Select the checkbox next to each statement once you have read the statement."
+                  />
+
+                  <p className="ack-intro"><strong>I, a recipient of child support services, have read and understand the following:</strong></p>
+
+                  <div className="ack-list">
+                    {NCP_NONREP_ITEMS.map((text, idx) => (
+                      <label key={idx} className={`ack-item ${(form.ncpNonrepChecks ?? [])[idx] ? 'checked' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={Boolean((form.ncpNonrepChecks ?? [])[idx])}
+                          onChange={() => toggleNcpNonrepCheck(idx)}
+                        />
+                        <span className="ack-text">{text}</span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <p className="ack-footnote">
+                    The North Dakota laws that deal with paragraphs 1 through 6 above can be found in North Dakota Century Code sections 14-09-09.26 and 14-09-09.27.
+                  </p>
+                  <p className="ack-footnote">
+                    By selecting &lsquo;Next&rsquo; at the bottom of this page, I am stating that I have reviewed and understand this Acknowledgment of Nonrepresentation.
+                  </p>
+
+                  <p className="required-note"><span className="req">*</span> {t('apply.required')}</p>
+                </div>
+              )}
+
+              {currentStep.key === 'rights' && form.applicantType !== 'relative_caregiver' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={ShieldCheck}
@@ -2284,7 +2511,47 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'assistance' && (
+              {currentStep.key === 'assistance' && form.applicantType === 'relative_caregiver' && (
+                <div className="animate-fade-in">
+                  <StepHeading
+                    icon={Users}
+                    title="Service Type"
+                    subtitle="Review the available services then select the service for which you would like to apply."
+                  />
+
+                  <div className="ack-list">
+                    {NCP_SERVICE_TYPES.map((opt) => (
+                      <label key={opt.value} className={`ack-item ${form.ncpServiceType === opt.value ? 'checked' : ''}`}>
+                        <input
+                          type="radio"
+                          name="ncpServiceType"
+                          checked={form.ncpServiceType === opt.value}
+                          onChange={() => setForm((p) => ({ ...p, ncpServiceType: opt.value }))}
+                        />
+                        <span className="ack-text">
+                          <strong>{opt.title}</strong>
+                          {opt.bullets.length > 0 && (
+                            <ul style={{ margin: '6px 0 0 0', paddingLeft: 20, listStyle: 'disc' }}>
+                              {opt.bullets.map((b, bi) => (
+                                <li key={bi} style={{ margin: '3px 0' }}>{b}</li>
+                              ))}
+                            </ul>
+                          )}
+                          {opt.note && (
+                            <span style={{ display: 'block', marginTop: 6, fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                              Note: {opt.note}
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+
+                  <p className="required-note"><span className="req">*</span> {t('apply.required')}</p>
+                </div>
+              )}
+
+              {currentStep.key === 'assistance' && form.applicantType !== 'relative_caregiver' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Users}
@@ -2315,7 +2582,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'publicAssistance' && (
+              {currentStep.key === 'publicAssistance' && form.applicantType !== 'relative_caregiver' && (
                 <div className="animate-fade-in">
                   <p className="apply-step-subtitle">{t('apply.step5.question')}</p>
 
@@ -4632,6 +4899,22 @@ export default function ApplyWizard() {
                               <span className="review-item-label">Receives Public Assistance</span>
                               <span className="review-item-value">{form.receivesPublicAssistance === 'yes' ? 'Yes' : form.receivesPublicAssistance === 'no' ? 'No' : '—'}</span>
                             </div>
+                            {form.applicantType === 'relative_caregiver' && (
+                              <>
+                                <div className="review-data-item">
+                                  <span className="review-item-label">Agreement</span>
+                                  <span className="review-item-value">{(form.ncpAgreementChecks ?? []).length > 0 && (form.ncpAgreementChecks ?? []).every(Boolean) ? 'All statements acknowledged' : 'Incomplete'}</span>
+                                </div>
+                                <div className="review-data-item">
+                                  <span className="review-item-label">Nonrepresentation</span>
+                                  <span className="review-item-value">{(form.ncpNonrepChecks ?? []).length > 0 && (form.ncpNonrepChecks ?? []).every(Boolean) ? 'Acknowledged' : 'Incomplete'}</span>
+                                </div>
+                                <div className="review-data-item">
+                                  <span className="review-item-label">Service Requested</span>
+                                  <span className="review-item-value">{NCP_SERVICE_LABEL[form.ncpServiceType] ?? '—'}</span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
                       </div>
