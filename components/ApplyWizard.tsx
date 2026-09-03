@@ -32,6 +32,7 @@ import {
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { TranslationKey } from '@/lib/i18n/en';
+import * as applicationsApi from '@/lib/applicationsApi';
 
 interface StoredUser {
   id: number;
@@ -1164,6 +1165,95 @@ export default function ApplyWizard() {
 
   const draftKey = user ? `ccap_draft_${user.id}` : null;
   const applicationsKey = user ? `ccap_applications_${user.id}` : null;
+  const serverAppIdKey = user ? `ccap_server_app_id_${user.id}` : null;
+  const serverAppIdRef = React.useRef<number | null>(null);
+  const serverCreateRef = React.useRef<Promise<number> | null>(null);
+
+  const buildApplicationDetails = React.useCallback(
+    () => ({
+      data: form,
+      stepIndex,
+      details,
+      activeSubSection,
+      visitedSubSections: Array.from(visitedSubSections),
+      schemaVersion: 1,
+    }),
+    [form, stepIndex, details, activeSubSection, visitedSubSections],
+  );
+
+  // Ensure a server-side draft row exists; returns its id (or null if the API is unreachable).
+  const ensureServerApplication = async (payload: Record<string, unknown>): Promise<number | null> => {
+    if (serverAppIdRef.current) return serverAppIdRef.current;
+    if (!serverCreateRef.current) {
+      serverCreateRef.current = applicationsApi
+        .createApplication(payload)
+        .then((rec) => {
+          serverAppIdRef.current = rec.id;
+          if (serverAppIdKey) localStorage.setItem(serverAppIdKey, String(rec.id));
+          return rec.id;
+        })
+        .finally(() => {
+          serverCreateRef.current = null;
+        });
+    }
+    try {
+      return await serverCreateRef.current;
+    } catch {
+      return null;
+    }
+  };
+
+  const pushDraftToServer = async (payload: Record<string, unknown>) => {
+    try {
+      const id = await ensureServerApplication(payload);
+      if (id) await applicationsApi.saveApplication(id, payload);
+    } catch {
+      /* offline / API down — the localStorage draft is the fallback */
+    }
+  };
+
+  // Build the consent-item audit list the backend stores in application_agreements.
+  const buildConsentItems = (): applicationsApi.ConsentItemInput[] => {
+    const items: applicationsApi.ConsentItemInput[] = [];
+    if (form.applicantType === 'relative_caregiver') {
+      (form.ncpAgreementChecks ?? []).forEach((accepted, i) => {
+        const it = NCP_AGREEMENT_ITEMS[i];
+        if (it) items.push({ consentItemCode: `ncp.agreement.${i}`, accepted: !!accepted, bodySnapshot: it.text });
+      });
+      (form.ncpNonrepChecks ?? []).forEach((accepted, i) => {
+        const txt = NCP_NONREP_ITEMS[i];
+        if (txt) items.push({ consentItemCode: `ncp.nonrep.${i}`, accepted: !!accepted, bodySnapshot: txt });
+      });
+      if (form.ncpServiceType) {
+        const svc = NCP_SERVICE_TYPES.find((s) => s.value === form.ncpServiceType);
+        items.push({
+          consentItemCode: 'ncp.service_type',
+          accepted: true,
+          bodySnapshot: `Service requested: ${svc?.title ?? form.ncpServiceType}`,
+        });
+      }
+    } else {
+      AGREEMENT_ITEM_KEYS.forEach((k, i) =>
+        items.push({ consentItemCode: `agreement.${i}`, accepted: !!form.agreementChecks[i], bodySnapshot: t(k) }),
+      );
+      RIGHTS_ITEM_KEYS.forEach((k, i) =>
+        items.push({ consentItemCode: `rights.${i}`, accepted: !!form.rightsChecks[i], bodySnapshot: t(k) }),
+      );
+      items.push({
+        consentItemCode: 'ack.redetermination',
+        accepted: !!form.redeterminationAck,
+        bodySnapshot: t('apply.step2.redetermination'),
+      });
+      if (form.withholdConsent) {
+        items.push({
+          consentItemCode: 'agreement.withhold_other_party_info',
+          accepted: form.withholdConsent === 'yes',
+          bodySnapshot: t('apply.step2.withholdQuestion'),
+        });
+      }
+    }
+    return items;
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('user');
@@ -1193,6 +1283,42 @@ export default function ApplyWizard() {
 
     setCheckedAuth(true);
   }, [router]);
+
+  // Pull the user's server-side draft (if any) so "Continue with existing
+  // application" works across devices. A local draft always wins while editing.
+  useEffect(() => {
+    if (!user || !draftKey) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const stored = serverAppIdKey ? localStorage.getItem(serverAppIdKey) : null;
+        if (stored) serverAppIdRef.current = Number(stored) || null;
+      } catch {
+        /* ignore */
+      }
+      try {
+        const list = await applicationsApi.listApplications();
+        const draft = list.find((a) => a.application_status === 'DRAFT');
+        if (cancelled || !draft) return;
+        serverAppIdRef.current = draft.id;
+        if (serverAppIdKey) localStorage.setItem(serverAppIdKey, String(draft.id));
+        if (!localStorage.getItem(draftKey)) {
+          const rec = await applicationsApi.getApplication(draft.id);
+          if (cancelled) return;
+          const d = rec.application_details as Record<string, unknown>;
+          if (d && typeof d === 'object' && 'data' in d) {
+            localStorage.setItem(draftKey, JSON.stringify(d));
+            setHasSavedDraft(true);
+          }
+        }
+      } catch {
+        /* API unreachable — local draft still works */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user, draftKey, serverAppIdKey]);
 
   // Keep the top-level applicant fields (used by validation & the review step)
   // in sync with the detailed Custodial Parent Applicant sub-forms.
@@ -1437,14 +1563,17 @@ export default function ApplyWizard() {
 
   const saveDraft = (data: ApplyFormData, atStepIndex: number) => {
     if (!draftKey) return;
-    localStorage.setItem(draftKey, JSON.stringify({
+    const payload = {
       data,
       stepIndex: atStepIndex,
       details,
       activeSubSection,
       visitedSubSections: Array.from(visitedSubSections),
-    }));
+      schemaVersion: 1,
+    };
+    localStorage.setItem(draftKey, JSON.stringify(payload));
     setHasSavedDraft(true);
+    void pushDraftToServer(payload as unknown as Record<string, unknown>);
   };
 
   const loadDraft = () => {
@@ -1613,7 +1742,7 @@ export default function ApplyWizard() {
     router.push('/parent/dashboard');
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const err = validateStep(stepIndex);
     if (err) {
       setError(err);
@@ -1622,22 +1751,41 @@ export default function ApplyWizard() {
     setError('');
     setSubmitting(true);
 
-    setTimeout(() => {
-      const ref = `NDCS-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
-      if (applicationsKey) {
-        const existingRaw = localStorage.getItem(applicationsKey);
-        const existing = existingRaw ? JSON.parse(existingRaw) : [];
-        existing.push({ referenceNumber: ref, submittedAt: new Date().toISOString(), data: form });
-        localStorage.setItem(applicationsKey, JSON.stringify(existing));
+    const localRef = `NDCS-${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const payload = buildApplicationDetails() as unknown as Record<string, unknown>;
+    let ref = localRef;
+
+    try {
+      const id = await ensureServerApplication(payload);
+      if (id) {
+        const submitted = await applicationsApi.submitApplication(id, {
+          signature: form.certify ? form.fullName || 'Applicant' : '',
+          certified: form.certify,
+          agreements: buildConsentItems(),
+          applicationDetails: payload,
+        });
+        ref = submitted.reference_code || localRef;
       }
-      if (draftKey) {
-        localStorage.removeItem(draftKey);
-      }
-      setReferenceNumber(ref);
-      setSubmitting(false);
-      setSubmitted(true);
-      scrollCardToTop();
-    }, 900);
+    } catch (e) {
+      // Submit failed server-side — fall through to the local-only record so the
+      // applicant still gets a confirmation and reference number.
+      console.error('Application submit failed, saved locally only:', e);
+    }
+
+    if (applicationsKey) {
+      const existingRaw = localStorage.getItem(applicationsKey);
+      const existing = existingRaw ? JSON.parse(existingRaw) : [];
+      existing.push({ referenceNumber: ref, submittedAt: new Date().toISOString(), data: form });
+      localStorage.setItem(applicationsKey, JSON.stringify(existing));
+    }
+    if (draftKey) localStorage.removeItem(draftKey);
+    if (serverAppIdKey) localStorage.removeItem(serverAppIdKey);
+    serverAppIdRef.current = null;
+
+    setReferenceNumber(ref);
+    setSubmitting(false);
+    setSubmitted(true);
+    scrollCardToTop();
   };
 
   const toggleAgreementCheck = (idx: number) => {
