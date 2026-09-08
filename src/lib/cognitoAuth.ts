@@ -5,6 +5,11 @@ import {
   InitiateAuthCommand,
   RespondToAuthChallengeCommand,
 } from '@aws-sdk/client-cognito-identity-provider';
+import { AUTH_CHANGE_EVENT, notifyAuthChange } from '@/lib/authEvents';
+
+// Re-exported for existing importers (e.g. Header) — the canonical definition
+// now lives in authEvents so the local-auth module can share it.
+export { AUTH_CHANGE_EVENT };
 
 const REGION = process.env.NEXT_PUBLIC_AWS_REGION as string;
 const CLIENT_ID = process.env.NEXT_PUBLIC_COGNITO_APP_CLIENT_ID as string;
@@ -231,9 +236,11 @@ export function syncLegacyUser() {
       role: claims.role,
     })
   );
+  notifyAuthChange();
 }
 
 export function clearLegacyUser() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  notifyAuthChange();
 }

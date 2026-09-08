@@ -36,26 +36,21 @@ function interpolate(text: string, vars?: Record<string, string | number>): stri
 }
 
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
+  // The UI now renders an English base and the Google Translate widget
+  // translates the whole DOM (see components/GoogleTranslate.tsx). We keep this
+  // provider so every `t()` call still resolves, but it stays on English.
   const [language, setLanguageState] = useState<LanguageCode>(DEFAULT_LANGUAGE);
 
   useEffect(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY) as LanguageCode | null;
-      if (stored && DICTIONARIES[stored]) {
-        setLanguageState(stored);
-      }
+      localStorage.removeItem(STORAGE_KEY); // clear any stale i18n selection
     } catch {
-      // ignore — localStorage may be unavailable
+      // ignore
     }
   }, []);
 
   const setLanguage = (code: LanguageCode) => {
     setLanguageState(code);
-    try {
-      localStorage.setItem(STORAGE_KEY, code);
-    } catch {
-      // ignore
-    }
   };
 
   const t = useMemo(() => {

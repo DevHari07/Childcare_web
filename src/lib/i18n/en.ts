@@ -15,7 +15,7 @@ const en = {
   // Home page
   'home.eyebrow': 'North Dakota Health & Human Services',
   'home.title': 'Child Care Services Portal',
-  'home.subtitle': 'An official application system for the State of North Dakota. Find, manage, and apply for child care assistance and licensing.',
+  'home.subtitle': 'An official application system for the State of North Dakota. Find, manage, and apply for child Support and licensing.',
   'home.loggedInAs': 'Logged in as',
   'home.goToDashboard': 'Go to Dashboard',
   'home.signInCta': 'Sign In to Your Account',
@@ -148,12 +148,12 @@ const en = {
   'dashboard.welcomeBack': 'Welcome back,',
   'dashboard.parentTitle': 'Your Dashboard',
   'dashboard.parentDesc': "You don't have any active applications yet. Start a new Child Care Assistance Program (CCAP) application below to begin the eligibility and enrollment process.",
-  'dashboard.applyBtn': 'Apply for Child Care Assistance',
+  'dashboard.applyBtn': 'Apply for Child Support',
   'dashboard.providerTitle': 'Provider Dashboard',
   'dashboard.providerDesc': 'Licensing renewal, attendance tracking, and reimbursement claim tools for providers are being finalized. Check back soon.',
 
   // Apply wizard — navigation & common
-  'apply.pageTitle': 'Child Care Assistance: Apply Now',
+  'apply.pageTitle': 'Child Support: Apply Now',
   'apply.stepOf': 'Step {n} of {total}',
   'apply.saveExit': 'Save & Exit',
   'apply.previous': 'Previous',

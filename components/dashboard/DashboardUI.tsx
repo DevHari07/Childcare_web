@@ -42,12 +42,10 @@ export function CsdPage({
 }) {
   return (
     <div className="csd-shell">
+      {back && <BackLink href={back.href} label={back.label} />}
       <div className="csd-page-head">
         <h1 className="csd-page-title">{title}</h1>
-        <div className="csd-page-head-actions">
-          {action}
-          {back && <BackLink href={back.href} label={back.label} />}
-        </div>
+        {action && <div className="csd-page-head-actions">{action}</div>}
       </div>
       {children}
     </div>

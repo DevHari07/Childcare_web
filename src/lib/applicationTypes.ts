@@ -253,7 +253,7 @@ export interface ApplicationFormData {
   schemaVersion: number;
   resumeStep: string;
 
-  apply: { applicantType: 'parent_guardian' | 'relative_caregiver' | '' };
+  apply: { applicantType: 'custodian' | 'non-custodian' | '' };
   agreement: { checks: boolean[]; withholdOtherPartyInfo: boolean };
   rights: { checks: boolean[]; redeterminationAck: boolean };
   serviceType: { type: 'full_service' | 'search_only' | ''; searchProviderName: string };
@@ -288,7 +288,7 @@ export interface ApplicationRow {
   userId: string;
   referenceNumber: string | null;
   status: ApplicationStatus;
-  applicantType: 'parent_guardian' | 'relative_caregiver' | null;
+  applicantType: 'custodian' | 'non-custodian' | null;
   serviceType: 'full_service' | 'search_only' | null;
   resumeStep: string | null;
   formData: ApplicationFormData;

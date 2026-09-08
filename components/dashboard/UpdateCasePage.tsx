@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { CsdPage, useDashboardAuth } from '@components/dashboard/DashboardUI';
 import { getCase } from '@/lib/dashboardData';
+import DateField from '@components/DateField';
 
 interface AddressForm {
   international: 'yes' | 'no' | '';
@@ -207,10 +208,10 @@ export default function UpdateCasePage({ caseId }: { caseId: string }) {
             <input className="csd-input" value={state.employer.occupation} onChange={(e) => setState((p) => ({ ...p, employer: { ...p.employer, occupation: e.target.value } }))} />
           </Field>
           <Field label="Start Date">
-            <input type="date" className="csd-input" value={state.employer.startDate} onChange={(e) => setState((p) => ({ ...p, employer: { ...p.employer, startDate: e.target.value } }))} />
+            <DateField className="csd-input" value={state.employer.startDate} onChange={(v) => setState((p) => ({ ...p, employer: { ...p.employer, startDate: v } }))} />
           </Field>
           <Field label="End Date">
-            <input type="date" className="csd-input" value={state.employer.endDate} onChange={(e) => setState((p) => ({ ...p, employer: { ...p.employer, endDate: e.target.value } }))} />
+            <DateField className="csd-input" value={state.employer.endDate} onChange={(v) => setState((p) => ({ ...p, employer: { ...p.employer, endDate: v } }))} />
           </Field>
         </div>
         <div className="csd-formcard-actions">

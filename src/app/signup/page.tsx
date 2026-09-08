@@ -1,5 +1,7 @@
 import React, { Suspense } from 'react';
+import { isLocalAuth } from '@/lib/authProvider';
 import SignupForm from '@components/SignupForm';
+import LocalSignupForm from '@components/LocalSignupForm';
 
 export default function SignupPage() {
   return (
@@ -11,7 +13,7 @@ export default function SignupPage() {
         </div>
       </div>
     }>
-      <SignupForm />
+      {isLocalAuth ? <LocalSignupForm /> : <SignupForm />}
     </Suspense>
   );
 }

@@ -4,6 +4,7 @@ import "./globals.css";
 import USABanner from "@components/USABanner";
 import Header from "@components/Header";
 import Footer from "@components/Footer";
+import GoogleTranslate from "@components/GoogleTranslate";
 import { LanguageProvider } from "@/lib/i18n/LanguageContext";
 
 const poppins = Poppins({
@@ -26,6 +27,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="en" className={`${poppins.variable} h-full antialiased`}>
       <body>
         <LanguageProvider>
+          <GoogleTranslate />
           <USABanner />
           <Header />
           <main className="app-main">

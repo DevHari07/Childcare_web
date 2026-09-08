@@ -4,8 +4,11 @@ FastAPI service with two concerns:
 
 | Area | Endpoints | Storage |
 |---|---|---|
-| **Auth** | `POST /users` | AWS Cognito (admin-create → temp password emailed) |
+| **Local auth** | `POST /auth/register`, `POST /auth/login` | PostgreSQL `users` (bcrypt `password_hash`, role via `user_roles`, security Q&A in `user_security_questions`) — issues an HS256 JWT signed with `LOCAL_JWT_SECRET` |
+| **Cognito auth** | `POST /users` | AWS Cognito (admin-create → temp password emailed) |
 | **Applications** | `GET/POST /applications`, `GET/PUT/DELETE /applications/{id}`, `POST /applications/{id}/submit`, `GET /applications/{id}/agreements` | PostgreSQL — the whole form is stored as JSON in `applications.application_details` |
+
+The frontend picks local vs Cognito with `NEXT_PUBLIC_AUTH_PROVIDER` (`local` default).
 
 Data model: `db/schema.sql` (from `Child_Support_Application_Data_Models_V1`).
 
@@ -23,7 +26,8 @@ copy .env.example .env      # then edit
 ```
 DATABASE_URL=postgresql://postgres:TEST@localhost:5432/childcare
 POSTGRES_ADMIN_URL=postgresql://postgres:TEST@localhost:5432/postgres
-APP_AUTH_MODE=dev           # dev = don't verify the Cognito token signature
+APP_AUTH_MODE=local        # local = accounts in the users table via /auth/*
+LOCAL_JWT_SECRET=change-me # HS256 secret for the tokens /auth/* mints
 ```
 
 ## Initialise the database
@@ -52,10 +56,20 @@ Docs at http://localhost:8000/docs · health at `/`.
 
 | `APP_AUTH_MODE` | `/applications` behaviour |
 |---|---|
-| `dev` | Reads the bearer token's claims **without verifying the signature**; if no token is sent, uses `DEV_USER_*`. Local only. |
+| `local` | Requires a token minted by `POST /auth/register` or `POST /auth/login` (HS256, `LOCAL_JWT_SECRET`). Accounts live in the `users` table. |
 | `cognito` | Requires a valid Cognito **ID token** (`Authorization: Bearer …`), verified against the pool JWKS. Needs `COGNITO_USER_POOL_ID` + `COGNITO_APP_CLIENT_ID`. |
+| `dev` | Reads the bearer token's claims **without verifying the signature**; if no token is sent, uses `DEV_USER_*`. Local only. |
 
-The frontend sends `Authorization: Bearer <idToken>` (from `getIdToken()` in `src/lib/cognitoAuth.ts`) either way — `dev` mode still records the real user, it just skips signature verification.
+The frontend sends `Authorization: Bearer <token>` from `getAuthToken()` (`src/lib/authToken.ts`), which returns the local JWT or the Cognito ID token depending on `NEXT_PUBLIC_AUTH_PROVIDER`.
+
+### Local auth endpoints
+
+```
+POST /auth/register  {firstName,lastName,email,password,role,phone?,securityQuestions:[{question,answer}]}
+                     -> 201 {token, user:{id,first_name,last_name,email,role}}   (account ACTIVE immediately)
+POST /auth/login     {email,password}
+                     -> 200 {token, user}     (email match is case-insensitive)
+```
 
 ## Application lifecycle
 
@@ -75,7 +89,9 @@ DELETE /applications/{id}       -> status WITHDRAWN (never hard-deleted)
 
 On submit these columns are also lifted out of the canonical JSON for the caseworker queue:
 `applicant_type · service_type · applicant_name · applicant_email · child_count`
-(indexed by `(applicant_type, service_type)`).
+(indexed by `(applicant_type, service_type)`). `applicant_type` is `custodian` or
+`non-custodian` (legacy `parent_guardian` / `relative_caregiver` payloads are mapped
+on normalise).
 
 **PII:** in the canonical doc an SSN becomes `{"last4":"6789"}`; if `APP_ENCRYPTION_KEY`
 is set it also carries `{"cipher":"…"}` (Fernet) so an authorised process can recover it.

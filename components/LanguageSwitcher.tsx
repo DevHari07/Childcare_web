@@ -2,13 +2,17 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { Globe, Check, ChevronDown } from 'lucide-react';
-import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { LANGUAGES } from '@/lib/i18n/languages';
+import { LANGUAGES, type LanguageCode } from '@/lib/i18n/languages';
+import { getGoogleTranslateLanguage, setGoogleTranslateLanguage } from '@/lib/googleTranslate';
 
 export default function LanguageSwitcher() {
-  const { language, setLanguage, t } = useLanguage();
   const [open, setOpen] = useState(false);
+  const [language, setLanguage] = useState<LanguageCode>('en');
   const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setLanguage(getGoogleTranslateLanguage());
+  }, []);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {
@@ -22,15 +26,21 @@ export default function LanguageSwitcher() {
 
   const current = LANGUAGES.find((l) => l.code === language) ?? LANGUAGES[0];
 
+  const choose = (code: LanguageCode) => {
+    setOpen(false);
+    if (code === language) return;
+    setGoogleTranslateLanguage(code); // sets the googtrans cookie and reloads
+  };
+
   return (
-    <div className="lang-switcher" ref={rootRef}>
+    <div className="lang-switcher notranslate" translate="no" ref={rootRef}>
       <button
         type="button"
         className="lang-switcher-btn"
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        aria-label={t('header.language')}
+        aria-label="Language"
       >
         <Globe size={15} strokeWidth={2} />
         <span>{current.nativeLabel}</span>
@@ -43,7 +53,7 @@ export default function LanguageSwitcher() {
               <button
                 type="button"
                 className={`lang-switcher-option ${lang.code === language ? 'selected' : ''}`}
-                onClick={() => { setLanguage(lang.code); setOpen(false); }}
+                onClick={() => choose(lang.code)}
                 role="option"
                 aria-selected={lang.code === language}
               >

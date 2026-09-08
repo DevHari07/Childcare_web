@@ -10,6 +10,7 @@ import {
   CreditCard,
   FileBox,
   MessagesSquare,
+  Bell,
   Link2,
 } from 'lucide-react';
 
@@ -24,6 +25,7 @@ const SECONDARY = [
   { href: '/parent/dashboard#payments', label: 'Payments', icon: CreditCard },
   { href: '/parent/dashboard#documents', label: 'Documents', icon: FileBox },
   { href: '/parent/dashboard#messages', label: 'Messages', icon: MessagesSquare },
+  { href: '/parent/dashboard#notices', label: 'Notices', icon: Bell },
 ];
 
 export default function DashboardChrome({ children }: { children: React.ReactNode }) {

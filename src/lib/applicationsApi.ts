@@ -10,7 +10,7 @@
  * `dev` auth mode the signature isn't verified, but the real user is still
  * recorded from the token's claims.
  */
-import { getIdToken } from '@/lib/cognitoAuth';
+import { getAuthToken } from '@/lib/authToken';
 
 const API_URL = (process.env.NEXT_PUBLIC_AUTH_API_URL as string) || 'http://localhost:8000';
 
@@ -52,7 +52,7 @@ export class ApplicationsApiError extends Error {
 }
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = await getIdToken().catch(() => null);
+  const token = await getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(init.headers as Record<string, string> | undefined),

@@ -1344,6 +1344,63 @@ h3 {
   align-self: flex-end;
 }
 
+/* Standalone modern input — same look as .modern-field-group fields, usable
+   anywhere (e.g. the Application name field inside a .choice-box). */
+.modern-input {
+  width: 100%;
+  padding: 10px 13px;
+  background-color: #f8fafc;
+  border: 1.5px solid #dde3ec;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  line-height: 1.4;
+  color: #1e293b;
+  outline: none;
+  transition: border-color 0.15s var(--ease), background-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.modern-input::placeholder {
+  color: #94a3b8;
+}
+
+.modern-input:hover:not(:focus) {
+  border-color: #c4cddb;
+}
+
+.modern-input:focus {
+  border-color: var(--primary-light);
+  background-color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(29, 95, 184, 0.12);
+}
+
+.modern-input-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modern-input-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modern-input-hint {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.modern-input-count {
+  flex-shrink: 0;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-tertiary);
+}
+
 .field-table {
   display: flex;
   flex-direction: column;
@@ -4904,9 +4961,9 @@ select.csd-input { cursor: pointer; }
 .csd-timeline-payment { color: #0b7a3d; background: rgba(18, 164, 84, 0.12); }
 .csd-timeline-notice { color: #8a6d00; background: rgba(242, 183, 5, 0.16); }
 .csd-timeline-body { display: flex; flex-direction: column; gap: 1px; }
-.csd-timeline-title { font-size: 13px; font-weight: 600; color: var(--foreground); }
-.csd-timeline-detail { font-size: 12px; color: var(--text-secondary); }
-.csd-timeline-date { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+.csd-timeline-title { font-size: 15px; font-weight: 600; color: var(--foreground); }
+.csd-timeline-detail { font-size: 14px; color: var(--text-secondary); }
+.csd-timeline-date { font-size: 13px; color: var(--text-tertiary); margin-top: 2px; }
 
 /* ---- Applications list / inbox ---- */
 .csd-applist, .csd-inbox { list-style: none; display: flex; flex-direction: column; }
@@ -4970,3 +5027,60 @@ select.csd-input { cursor: pointer; }
   .csd-dash-header { flex-wrap: wrap; align-items: flex-start; }
   .csd-page-title { font-size: 1.4rem; }
 }
+/* ===========================================================================
+   Google Translate widget — hide all of its injected chrome. Only our own
+   <LanguageSwitcher/> controls translation; the banner is also removed in JS
+   (components/GoogleTranslate.tsx) because Google fights CSS with inline styles.
+   =========================================================================== */
+/* Keep the widget in the DOM but off-screen — some builds skip init on a
+   display:none host. Do NOT hide generic .skiptranslate iframes: the
+   translation engine is one of those. */
+#google_translate_element {
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+.goog-te-gadget,
+.goog-te-spinner-pos,
+.goog-te-gadget-icon { display: none !important; }
+
+/* The top banner. Google sometimes sets `display:block !important` inline, so
+   shove it off-screen instead — that survives its inline styles. Matches the
+   classic (.goog-te-banner-frame) and the new (obfuscated) markup. */
+.goog-te-banner-frame,
+.goog-te-banner-frame.skiptranslate,
+.VIpgJd-ZVi9od-ORHb-OEVmcd,
+.VIpgJd-ZVi9od-ORHb-OEVmcd-purZT {
+  position: fixed !important;
+  top: -10000px !important;
+  left: -10000px !important;
+  height: 0 !important;
+  width: 0 !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  z-index: -2147483648 !important;
+  pointer-events: none !important;
+}
+
+/* Google adds an inline `top` to <body>; keep our own layout put */
+body,
+html.translated-ltr body,
+html.translated-rtl body {
+  top: 0 !important;
+  position: static !important;
+}
+
+/* hover tooltip / "original text" balloon + highlight */
+.goog-tooltip,
+.goog-tooltip:hover,
+#goog-gt-tt,
+.goog-te-balloon-frame { display: none !important; }
+.goog-text-highlight {
+  background: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+font[style] { background: transparent !important; box-shadow: none !important; }

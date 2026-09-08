@@ -29,9 +29,8 @@ export default function ApplicationsListPage() {
   return (
     <CsdPage
       title="Applications"
-      back={{ href: '/parent/dashboard', label: 'Go back' }}
       action={
-        <button type="button" className="gov-btn gov-btn-primary gov-btn-sm" onClick={() => router.push('/apply')}>
+        <button type="button" className="gov-btn gov-btn-primary gov-btn-sm" onClick={() => router.push('/apply?new=1')}>
           Start a new application
         </button>
       }
@@ -55,11 +54,10 @@ export default function ApplicationsListPage() {
           <table className="csd-table">
             <thead>
               <tr>
-                <th>Application</th>
-                <th>Status</th>
-                <th>Number</th>
-                <th>Created</th>
+                <th>Application name</th>
+                <th>Application no</th>
                 <th>Submitted</th>
+                <th>Status</th>
                 <th aria-label="Actions" />
               </tr>
             </thead>
@@ -73,12 +71,11 @@ export default function ApplicationsListPage() {
                   <td>
                     <span className="csd-cell-strong">{a.name}</span>
                   </td>
+                  <td>{a.isDraft ? 'Not assigned' : a.id}</td>
+                  <td>{a.submittedDate ? longDate(a.submittedDate) : '—'}</td>
                   <td>
                     <StatusPill status={a.status} />
                   </td>
-                  <td>{a.isDraft ? 'Not assigned' : a.id}</td>
-                  <td>{longDate(a.createdDate)}</td>
-                  <td>{a.submittedDate ? longDate(a.submittedDate) : '—'}</td>
                   <td className="csd-num">
                     <span className="csd-row-actions">
                       {a.isDraft ? (

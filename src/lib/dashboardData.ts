@@ -10,6 +10,8 @@
  * function here, so swapping in a real API later is a one-file change.
  */
 
+import { formatDateUS } from '@/lib/dateFormat';
+
 export interface StoredUser {
   id: number | string;
   first_name: string;
@@ -204,16 +206,21 @@ export function getMessages(): DashboardMessage[] {
 interface StoredApplicationRecord {
   referenceNumber?: string;
   submittedAt?: string;
-  data?: { fullName?: string; children?: { firstName?: string; lastName?: string }[] };
+  data?: {
+    applicationName?: string;
+    fullName?: string;
+    children?: { firstName?: string; lastName?: string }[];
+  };
 }
 
 interface StoredDraftRecord {
-  data?: { fullName?: string; children?: { firstName?: string; lastName?: string }[] };
+  data?: StoredApplicationRecord['data'];
   savedAt?: string;
 }
 
 function applicantLabel(data: StoredApplicationRecord['data']): string {
   if (!data) return 'Child support application';
+  if (data.applicationName?.trim()) return data.applicationName.trim();
   const child = data.children?.[0];
   const childName = child ? `${child.firstName ?? ''} ${child.lastName ?? ''}`.trim() : '';
   if (childName) return childName;
@@ -401,18 +408,16 @@ export function money(n: number): string {
   return n.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
+// Every user-facing date renders as US MM/DD/YYYY. `longDate` / `shortDate`
+// keep their distinct null sentinels but otherwise return the same format.
 export function longDate(iso: string | null | undefined): string {
   if (!iso) return 'Not available';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  return formatDateUS(iso) || iso;
 }
 
 export function shortDate(iso: string | null | undefined): string {
   if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatDateUS(iso) || iso;
 }
 
 /** Whole days from today (2026-09-02) to `iso`. Negative = in the past. */

@@ -4,11 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Link2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { CsdPage, useDashboardAuth } from '@components/dashboard/DashboardUI';
-
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+import DateField from '@components/DateField';
 
 function formatSsn(raw: string) {
   const d = raw.replace(/\D/g, '').slice(0, 9);
@@ -24,9 +20,7 @@ export default function LinkCasePage() {
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
-  const [month, setMonth] = useState('');
-  const [day, setDay] = useState('');
-  const [year, setYear] = useState('');
+  const [dob, setDob] = useState('');
   const [ssn, setSsn] = useState('');
   const [submitted, setSubmitted] = useState(false);
 
@@ -37,9 +31,7 @@ export default function LinkCasePage() {
     firstName.trim() &&
     lastName.trim() &&
     gender &&
-    month &&
-    day.trim() &&
-    year.trim().length === 4 &&
+    dob &&
     ssnDigits.length === 9;
 
   const submit = (e: React.FormEvent) => {
@@ -111,38 +103,13 @@ export default function LinkCasePage() {
             </select>
           </label>
 
-          <div className="csd-field">
+          <label className="csd-field">
             <span className="csd-field-label">
               Date of birth <span className="csd-req">*</span>
             </span>
-            <div className="csd-dob">
-              <select className="csd-input" aria-label="Month" value={month} onChange={(e) => setMonth(e.target.value)}>
-                <option value="">Month</option>
-                {MONTHS.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <input
-                className="csd-input csd-input-narrow"
-                aria-label="Day"
-                placeholder="Day"
-                inputMode="numeric"
-                value={day}
-                onChange={(e) => setDay(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              />
-              <input
-                className="csd-input csd-input-narrow"
-                aria-label="Year"
-                placeholder="Year"
-                inputMode="numeric"
-                value={year}
-                onChange={(e) => setYear(e.target.value.replace(/\D/g, '').slice(0, 4))}
-              />
-            </div>
-            <span className="csd-field-hint">For example: January 19 2000</span>
-          </div>
+            <DateField className="csd-input" aria-label="Date of birth" value={dob} onChange={setDob} />
+            <span className="csd-field-hint">For example: 01/19/2000</span>
+          </label>
 
           <label className="csd-field">
             <span className="csd-field-label">

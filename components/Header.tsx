@@ -2,34 +2,49 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Home, HeartHandshake, Info, LogOut } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import Logo from './Logo';
 import LanguageSwitcher from './LanguageSwitcher';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
-import { signOutCurrentUser } from '@/lib/cognitoAuth';
+import { AUTH_CHANGE_EVENT } from '@/lib/authEvents';
+import { signOut } from '@/lib/authToken';
+
+type HeaderUser = { id: number; first_name: string; last_name: string; role: string };
+
+function readStoredUser(): HeaderUser | null {
+  try {
+    const storedUser = localStorage.getItem('user');
+    const token = localStorage.getItem('token');
+    if (storedUser && token) return JSON.parse(storedUser) as HeaderUser;
+  } catch (e) {
+    console.error('Error parsing user data', e);
+  }
+  return null;
+}
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const { t } = useLanguage();
-  const [user, setUser] = useState<{ id: number; first_name: string; last_name: string; role: string } | null>(null);
+  const [user, setUser] = useState<HeaderUser | null>(null);
 
+  // Header lives in the root layout and never remounts on client-side
+  // navigation, so re-sync from storage on every route change and whenever
+  // auth state changes in this tab (login/logout) or another tab.
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    const token = localStorage.getItem('token');
-    if (storedUser && token) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error('Error parsing user data', e);
-      }
-    }
-  }, []);
+    const sync = () => setUser(readStoredUser());
+    sync();
+    window.addEventListener(AUTH_CHANGE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(AUTH_CHANGE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [pathname]);
 
   const handleLogout = () => {
-    signOutCurrentUser();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    signOut();
     setUser(null);
     router.push('/login');
     router.refresh();
@@ -44,24 +59,6 @@ export default function Header() {
 
         <nav className="gov-nav" aria-label="Primary Navigation">
           <ul className="gov-nav-list">
-            <li>
-              <Link href="/" className="gov-nav-link">
-                <Home size={16} strokeWidth={2} />
-                {t('header.home')}
-              </Link>
-            </li>
-            <li>
-              <a href="#services" className="gov-nav-link">
-                <HeartHandshake size={16} strokeWidth={2} />
-                {t('header.services')}
-              </a>
-            </li>
-            <li>
-              <a href="#about" className="gov-nav-link">
-                <Info size={16} strokeWidth={2} />
-                {t('header.about')}
-              </a>
-            </li>
             <li>
               <LanguageSwitcher />
             </li>

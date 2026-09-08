@@ -33,6 +33,18 @@ import {
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { TranslationKey } from '@/lib/i18n/en';
 import * as applicationsApi from '@/lib/applicationsApi';
+import DateField from '@components/DateField';
+import { formatDateUS, parseDateToIso } from '@/lib/dateFormat';
+
+// Display a Social Security Number as XXX-XX-XXXX. Accepts raw digits or an
+// already-formatted value; strips non-digits and formats progressively so it
+// also works as you type. Stored value stays digits-only.
+function formatSsn(raw: string | null | undefined): string {
+  const d = (raw ?? '').replace(/\D/g, '').slice(0, 9);
+  if (d.length <= 3) return d;
+  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
+  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
+}
 
 interface StoredUser {
   id: number;
@@ -131,8 +143,8 @@ const EMPTY_CHILD: ChildEntry = {
 const RELATIONSHIP_OPTIONS = ['Son', 'Daughter', 'Stepson', 'Stepdaughter', 'Grandchild', 'Niece', 'Nephew', 'Foster Child', 'Other Relative'];
 
 interface ApplyFormData {
-  applicationMode: 'new' | 'saved' | '';
-  applicantType: 'parent_guardian' | 'relative_caregiver' | '';
+  applicationName: string;
+  applicantType: 'custodian' | 'non-custodian' | '';
   agreementChecks: boolean[];
   withholdConsent: 'yes' | 'no' | '';
   redeterminationAck: boolean;
@@ -765,7 +777,7 @@ function FieldRow({
 }
 
 const EMPTY_FORM: ApplyFormData = {
-  applicationMode: '',
+  applicationName: '',
   applicantType: '',
   agreementChecks: AGREEMENT_ITEM_KEYS.map(() => false),
   withholdConsent: '',
@@ -912,15 +924,15 @@ export default function ApplyWizard() {
         middleName: data.middleName || '',
         lastName: data.lastName || '',
         suffix: data.suffix || '',
-        ssn: data.ssn || '',
+        ssn: (data.ssn || '').replace(/\D/g, ''),
         gender: data.gender || '',
-        birthDate: data.birthDate || '',
+        birthDate: parseDateToIso(data.birthDate),
         birthCity: data.birthCity || '',
         birthState: data.birthState || '',
         maritalStatus: data.maritalStatus || '',
         maidenName: data.maidenName || '',
         spouseName: data.spouseName || '',
-        dateMarried: data.dateMarried || '',
+        dateMarried: parseDateToIso(data.dateMarried),
       };
 
       const parsedAddr: PersonAddressInfo = {
@@ -941,6 +953,7 @@ export default function ApplyWizard() {
           zip: '',
           country: 'United States of America',
         },
+        
         cellPhone: data.cellPhone || '',
         homePhone: data.homePhone || '',
         emergencyPhone: '',
@@ -1166,6 +1179,14 @@ export default function ApplyWizard() {
   const draftKey = user ? `ccap_draft_${user.id}` : null;
   const applicationsKey = user ? `ccap_applications_${user.id}` : null;
   const serverAppIdKey = user ? `ccap_server_app_id_${user.id}` : null;
+  // sessionStorage flag: this tab started a new application and the old draft
+  // must stay discarded even across a refresh, until the first save.
+  const freshKey = user ? `ccap_fresh_start_${user.id}` : null;
+  // Set when the user chose "Start a new application" and discarded a draft in
+  // progress: suppresses both the auto-resume and the server-draft pull.
+  const freshStartRef = React.useRef(false);
+  const startFreshHandledRef = React.useRef(false);
+  const autoResumedRef = React.useRef(false);
   const serverAppIdRef = React.useRef<number | null>(null);
   const serverCreateRef = React.useRef<Promise<number> | null>(null);
 
@@ -1181,9 +1202,13 @@ export default function ApplyWizard() {
     [form, stepIndex, details, activeSubSection, visitedSubSections],
   );
 
-  // Ensure a server-side draft row exists; returns its id (or null if the API is unreachable).
-  const ensureServerApplication = async (payload: Record<string, unknown>): Promise<number | null> => {
-    if (serverAppIdRef.current) return serverAppIdRef.current;
+  const forgetServerApplication = () => {
+    serverAppIdRef.current = null;
+    serverCreateRef.current = null;
+    if (serverAppIdKey) localStorage.removeItem(serverAppIdKey);
+  };
+
+  const createServerApplication = async (payload: Record<string, unknown>): Promise<number | null> => {
     if (!serverCreateRef.current) {
       serverCreateRef.current = applicationsApi
         .createApplication(payload)
@@ -1203,10 +1228,28 @@ export default function ApplyWizard() {
     }
   };
 
+  // Ensure a server-side draft row exists; returns its id (or null if the API is unreachable).
+  const ensureServerApplication = async (payload: Record<string, unknown>): Promise<number | null> => {
+    if (serverAppIdRef.current) return serverAppIdRef.current;
+    return createServerApplication(payload);
+  };
+
+  const isStale = (e: unknown) =>
+    e instanceof applicationsApi.ApplicationsApiError && (e.status === 404 || e.status === 409);
+
   const pushDraftToServer = async (payload: Record<string, unknown>) => {
     try {
       const id = await ensureServerApplication(payload);
-      if (id) await applicationsApi.saveApplication(id, payload);
+      if (!id) return;
+      try {
+        await applicationsApi.saveApplication(id, payload);
+      } catch (e) {
+        if (!isStale(e)) return;
+        // The stored id points at a deleted / already-submitted row — start fresh.
+        forgetServerApplication();
+        const fresh = await createServerApplication(payload);
+        if (fresh) await applicationsApi.saveApplication(fresh, payload);
+      }
     } catch {
       /* offline / API down — the localStorage draft is the fallback */
     }
@@ -1215,7 +1258,7 @@ export default function ApplyWizard() {
   // Build the consent-item audit list the backend stores in application_agreements.
   const buildConsentItems = (): applicationsApi.ConsentItemInput[] => {
     const items: applicationsApi.ConsentItemInput[] = [];
-    if (form.applicantType === 'relative_caregiver') {
+    if (form.applicantType === 'non-custodian') {
       (form.ncpAgreementChecks ?? []).forEach((accepted, i) => {
         const it = NCP_AGREEMENT_ITEMS[i];
         if (it) items.push({ consentItemCode: `ncp.agreement.${i}`, accepted: !!accepted, bodySnapshot: it.text });
@@ -1288,6 +1331,8 @@ export default function ApplyWizard() {
   // application" works across devices. A local draft always wins while editing.
   useEffect(() => {
     if (!user || !draftKey) return;
+    // "Start a new application" is in effect for this tab — don't restore a draft.
+    if (freshStartRef.current || (freshKey && sessionStorage.getItem(freshKey))) return;
     let cancelled = false;
     (async () => {
       try {
@@ -1298,8 +1343,14 @@ export default function ApplyWizard() {
       }
       try {
         const list = await applicationsApi.listApplications();
+        if (cancelled || freshStartRef.current) return;
+        // Drop a stored id that no longer exists on the server (e.g. deleted).
+        if (serverAppIdRef.current && !list.some((a) => a.id === serverAppIdRef.current)) {
+          serverAppIdRef.current = null;
+          if (serverAppIdKey) localStorage.removeItem(serverAppIdKey);
+        }
         const draft = list.find((a) => a.application_status === 'DRAFT');
-        if (cancelled || !draft) return;
+        if (!draft) return;
         serverAppIdRef.current = draft.id;
         if (serverAppIdKey) localStorage.setItem(serverAppIdKey, String(draft.id));
         if (!localStorage.getItem(draftKey)) {
@@ -1318,7 +1369,7 @@ export default function ApplyWizard() {
     return () => {
       cancelled = true;
     };
-  }, [user, draftKey, serverAppIdKey]);
+  }, [user, draftKey, serverAppIdKey, freshKey]);
 
   // Keep the top-level applicant fields (used by validation & the review step)
   // in sync with the detailed Custodial Parent Applicant sub-forms.
@@ -1573,6 +1624,12 @@ export default function ApplyWizard() {
     };
     localStorage.setItem(draftKey, JSON.stringify(payload));
     setHasSavedDraft(true);
+    // The new application now has real saved progress of its own — the
+    // "discard the old draft" guard has done its job.
+    freshStartRef.current = false;
+    if (freshKey) {
+      try { sessionStorage.removeItem(freshKey); } catch { /* ignore */ }
+    }
     void pushDraftToServer(payload as unknown as Record<string, unknown>);
   };
 
@@ -1615,18 +1672,72 @@ export default function ApplyWizard() {
     }
   };
 
+  // "Start a new application" (/apply?new=1): drop any saved draft and begin
+  // from a blank form instead of auto-resuming.
+  useEffect(() => {
+    if (startFreshHandledRef.current || !checkedAuth || !user || !draftKey) return;
+
+    let wantsNew = false;
+    try {
+      wantsNew = new URLSearchParams(window.location.search).get('new') === '1';
+    } catch {
+      /* ignore */
+    }
+    if (!wantsNew) return;
+    startFreshHandledRef.current = true;
+
+    // "New application" always starts blank — the previous draft is dropped
+    // without a confirmation prompt.
+    autoResumedRef.current = true; // block the auto-resume effect
+    freshStartRef.current = true;  // block the server-side draft pull
+
+    const staleId =
+      serverAppIdRef.current ??
+      (serverAppIdKey ? Number(localStorage.getItem(serverAppIdKey)) || null : null);
+    localStorage.removeItem(draftKey);
+    forgetServerApplication();
+    if (freshKey) {
+      try { sessionStorage.setItem(freshKey, '1'); } catch { /* ignore */ }
+    }
+    if (staleId) void applicationsApi.withdrawApplication(staleId).catch(() => {});
+
+    // Wipe anything a resumed draft could have populated.
+    setForm({
+      ...EMPTY_FORM,
+      fullName: `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim(),
+      email: user.email ?? '',
+    });
+    setDetails(emptyDetails());
+    setStepIndex(0);
+    setFurthestStep(0);
+    setActiveSubSection(null);
+    setVisitedSubSections(new Set());
+    setHasSavedDraft(false);
+
+    // Drop ?new=1 so a later refresh doesn't re-run this.
+    router.replace('/apply');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkedAuth, user, draftKey, serverAppIdKey, freshKey, router]);
+
+  // Auto-resume: if a draft exists (locally, or pulled from the server on mount),
+  // pick up where the applicant left off instead of showing a "continue" prompt.
+  useEffect(() => {
+    if (autoResumedRef.current || !checkedAuth || !user || !draftKey) return;
+    if (localStorage.getItem(draftKey)) {
+      autoResumedRef.current = true;
+      loadDraft();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [checkedAuth, user, draftKey, hasSavedDraft]);
+
   const validateStep = (index: number): string => {
     switch (STEPS[index].key) {
       case 'apply':
-        if (form.applicationMode === 'saved') {
-          if (!hasSavedDraft) return t('apply.step1.noSavedNote');
-          return '';
-        }
-        if (form.applicationMode !== 'new') return t('apply.step1.iWantTo');
         if (!form.applicantType) return t('apply.step1.iAmThe');
+        if (!form.applicationName.trim()) return 'Enter a name for this application.';
         return '';
       case 'agreement':
-        if (form.applicantType === 'relative_caregiver') {
+        if (form.applicantType === 'non-custodian') {
           if ((form.ncpAgreementChecks ?? []).some((c) => !c) || (form.ncpAgreementChecks ?? []).length === 0)
             return 'Select the checkbox next to each statement once you have read the statement.';
           return '';
@@ -1636,7 +1747,7 @@ export default function ApplyWizard() {
         if (!form.redeterminationAck) return t('apply.step2.redetermination');
         return '';
       case 'rights':
-        if (form.applicantType === 'relative_caregiver') {
+        if (form.applicantType === 'non-custodian') {
           if ((form.ncpNonrepChecks ?? []).some((c) => !c) || (form.ncpNonrepChecks ?? []).length === 0)
             return 'Select the checkbox next to each statement once you have read the statement.';
           return '';
@@ -1644,14 +1755,14 @@ export default function ApplyWizard() {
         if (form.rightsChecks.some((c) => !c)) return t('apply.step3.infoBanner');
         return '';
       case 'assistance':
-        if (form.applicantType === 'relative_caregiver') {
+        if (form.applicantType === 'non-custodian') {
           if (!form.ncpServiceType) return 'Review the available services then select the service for which you would like to apply.';
           return '';
         }
         if (!form.assistanceType) return t('apply.step4.infoBanner');
         return '';
       case 'publicAssistance':
-        if (form.applicantType === 'relative_caregiver') return '';
+        if (form.applicantType === 'non-custodian') return '';
         if (!form.receivesPublicAssistance) return t('apply.step5.question');
         return '';
       case 'household':
@@ -1675,7 +1786,7 @@ export default function ApplyWizard() {
     index >= 0 &&
     index < STEPS.length &&
     STEPS[index].key === 'publicAssistance' &&
-    form.applicantType === 'relative_caregiver';
+    form.applicantType === 'non-custodian';
 
   const nextVisibleStep = (from: number, dir: 1 | -1) => {
     let i = from + dir;
@@ -1694,18 +1805,6 @@ export default function ApplyWizard() {
   };
 
   const handleNext = () => {
-    if (currentStep.key === 'apply' && form.applicationMode === 'saved') {
-      const err = validateStep(stepIndex);
-      if (err) {
-        setError(err);
-        return;
-      }
-      if (loadDraft()) {
-        setError('');
-        return;
-      }
-    }
-
     const err = validateStep(stepIndex);
     if (err) {
       setError(err);
@@ -1755,16 +1854,27 @@ export default function ApplyWizard() {
     const payload = buildApplicationDetails() as unknown as Record<string, unknown>;
     let ref = localRef;
 
+    const submitBody = {
+      signature: form.certify ? form.fullName || 'Applicant' : '',
+      certified: form.certify,
+      agreements: buildConsentItems(),
+      applicationDetails: payload,
+    };
+
     try {
-      const id = await ensureServerApplication(payload);
+      let id = await ensureServerApplication(payload);
       if (id) {
-        const submitted = await applicationsApi.submitApplication(id, {
-          signature: form.certify ? form.fullName || 'Applicant' : '',
-          certified: form.certify,
-          agreements: buildConsentItems(),
-          applicationDetails: payload,
-        });
-        ref = submitted.reference_code || localRef;
+        let submitted;
+        try {
+          submitted = await applicationsApi.submitApplication(id, submitBody);
+        } catch (e) {
+          if (!isStale(e)) throw e;
+          // stored id was deleted / no longer a draft — recreate and submit that
+          forgetServerApplication();
+          id = await createServerApplication(payload);
+          if (id) submitted = await applicationsApi.submitApplication(id, submitBody);
+        }
+        if (submitted) ref = submitted.reference_code || localRef;
       }
     } catch (e) {
       // Submit failed server-side — fall through to the local-only record so the
@@ -1780,6 +1890,10 @@ export default function ApplyWizard() {
     }
     if (draftKey) localStorage.removeItem(draftKey);
     if (serverAppIdKey) localStorage.removeItem(serverAppIdKey);
+    if (freshKey) {
+      try { sessionStorage.removeItem(freshKey); } catch { /* ignore */ }
+    }
+    freshStartRef.current = false;
     serverAppIdRef.current = null;
 
     setReferenceNumber(ref);
@@ -2428,50 +2542,54 @@ export default function ApplyWizard() {
                     {t('apply.step1.infoBanner')}
                   </InfoBanner>
 
-                  <ChoiceBox label={t('apply.step1.iWantTo')}>
+                  <ChoiceBox label={t('apply.step1.iAmThe')}>
                     <RadioRow
-                      name="applicationMode"
-                      checked={form.applicationMode === 'new'}
-                      onChange={() => setForm((p) => ({ ...p, applicationMode: 'new' }))}
-                      title={t('apply.step1.startNewTitle')}
-                      description={t('apply.step1.startNewDesc')}
+                      name="applicantType"
+                      checked={form.applicantType === 'custodian'}
+                      onChange={() => setForm((p) => ({ ...p, applicantType: 'custodian' }))}
+                      title={t('apply.step1.parentTitle')}
+                      description={t('apply.step1.parentDesc')}
                     />
                     <RadioRow
-                      name="applicationMode"
-                      checked={form.applicationMode === 'saved'}
-                      onChange={() => setForm((p) => ({ ...p, applicationMode: 'saved' }))}
-                      title={t('apply.step1.openSavedTitle')}
-                      description={t('apply.step1.openSavedDesc')}
+                      name="applicantType"
+                      checked={form.applicantType === 'non-custodian'}
+                      onChange={() => setForm((p) => ({ ...p, applicantType: 'non-custodian' }))}
+                      title={t('apply.step1.relativeTitle')}
+                      description={t('apply.step1.relativeDesc')}
                     />
-                    {form.applicationMode === 'saved' && !hasSavedDraft && (
-                      <div className="choice-inline-note">{t('apply.step1.noSavedNote')}</div>
-                    )}
                   </ChoiceBox>
 
-                  {form.applicationMode === 'new' && (
-                    <ChoiceBox label={t('apply.step1.iAmThe')}>
-                      <RadioRow
-                        name="applicantType"
-                        checked={form.applicantType === 'parent_guardian'}
-                        onChange={() => setForm((p) => ({ ...p, applicantType: 'parent_guardian' }))}
-                        title={t('apply.step1.parentTitle')}
-                        description={t('apply.step1.parentDesc')}
-                      />
-                      <RadioRow
-                        name="applicantType"
-                        checked={form.applicantType === 'relative_caregiver'}
-                        onChange={() => setForm((p) => ({ ...p, applicantType: 'relative_caregiver' }))}
-                        title={t('apply.step1.relativeTitle')}
-                        description={t('apply.step1.relativeDesc')}
-                      />
-                    </ChoiceBox>
+                  {form.applicantType && (
+                    <div className="choice-box animate-fade-in">
+                      <div className="choice-box-label">
+                        <span className="req">*</span> Application name
+                      </div>
+                      <div className="choice-box-options">
+                        <div className="modern-input-field" style={{ maxWidth: 420 }}>
+                          <input
+                            type="text"
+                            className="modern-input"
+                            value={form.applicationName}
+                            maxLength={80}
+                            placeholder="e.g. Jordan — child support application"
+                            onChange={(e) => setForm((p) => ({ ...p, applicationName: e.target.value }))}
+                          />
+                          <div className="modern-input-row">
+                            <span className="modern-input-hint">
+                              A label so you can recognise this application on your dashboard.
+                            </span>
+                            <span className="modern-input-count">{form.applicationName.length}/80</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
                   <p className="required-note"><span className="req">*</span> {t('apply.required')}</p>
                 </div>
               )}
 
-              {currentStep.key === 'agreement' && form.applicantType === 'relative_caregiver' && (
+              {currentStep.key === 'agreement' && form.applicantType === 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Handshake}
@@ -2513,7 +2631,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'agreement' && form.applicantType !== 'relative_caregiver' && (
+              {currentStep.key === 'agreement' && form.applicantType !== 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Handshake}
@@ -2594,7 +2712,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'rights' && form.applicantType === 'relative_caregiver' && (
+              {currentStep.key === 'rights' && form.applicantType === 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={ShieldCheck}
@@ -2628,7 +2746,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'rights' && form.applicantType !== 'relative_caregiver' && (
+              {currentStep.key === 'rights' && form.applicantType !== 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={ShieldCheck}
@@ -2659,7 +2777,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'assistance' && form.applicantType === 'relative_caregiver' && (
+              {currentStep.key === 'assistance' && form.applicantType === 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Users}
@@ -2699,7 +2817,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'assistance' && form.applicantType !== 'relative_caregiver' && (
+              {currentStep.key === 'assistance' && form.applicantType !== 'non-custodian' && (
                 <div className="animate-fade-in">
                   <StepHeading
                     icon={Users}
@@ -2730,7 +2848,7 @@ export default function ApplyWizard() {
                 </div>
               )}
 
-              {currentStep.key === 'publicAssistance' && form.applicantType !== 'relative_caregiver' && (
+              {currentStep.key === 'publicAssistance' && form.applicantType !== 'non-custodian' && (
                 <div className="animate-fade-in">
                   <p className="apply-step-subtitle">{t('apply.step5.question')}</p>
 
@@ -2872,9 +2990,9 @@ export default function ApplyWizard() {
                     <>
                       <FormBar title={t('field.ssn')} />
                       <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.ssn')} required hint="(Don't include dashes or spaces, e.g., 123456789)">
+                        <FieldRow label={t('field.ssn')} required hint="(e.g., 123-45-6789)">
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <input style={{ flex: 1 }} type="text" value={details.custodialName.ssn} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                            <input style={{ flex: 1 }} type="text" value={formatSsn(details.custodialName.ssn)} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
                             <button type="button" className="apply-btn apply-btn-outline" style={{ flexShrink: 0 }} onClick={handleRetrieveCustodialMockData}>
                               Retrieve
                             </button>
@@ -2911,7 +3029,7 @@ export default function ApplyWizard() {
                         </div>
                         <div className="modern-field-group">
                           <label><span className="req">*</span> {t('field.birthDate')}:</label>
-                          <input type="date" value={details.custodialName.birthDate} onChange={(e) => updateCustodialName({ birthDate: e.target.value })} className="modern-input" />
+                          <DateField value={details.custodialName.birthDate} onChange={(v) => updateCustodialName({ birthDate: v })} className="modern-input" />
                         </div>
                       </div>
 
@@ -2932,7 +3050,7 @@ export default function ApplyWizard() {
                               <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
                             </FieldRow>
                             <FieldRow label={t('field.dateMarried')}>
-                              <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
+                              <DateField value={details.custodialName.dateMarried} onChange={(v) => updateCustodialName({ dateMarried: v })} />
                             </FieldRow>
                           </>
                         )}
@@ -3131,13 +3249,13 @@ export default function ApplyWizard() {
                                     <label>Social Security Number:</label>
                                     <input
                                       type="text"
-                                      value={childDraft.ssn}
+                                      value={formatSsn(childDraft.ssn)}
                                       onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })}
-                                      maxLength={9}
+                                      maxLength={11}
                                       className="modern-input"
                                     />
                                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
-                                      (Don&apos;t include dashes or spaces, e.g., 123456789)
+                                      (e.g., 123-45-6789)
                                     </span>
                                   </div>
                                   <div className="modern-field-group">
@@ -3169,10 +3287,9 @@ export default function ApplyWizard() {
                                 <div className="ocf-three-col-grid">
                                   <div className="modern-field-group">
                                     <label><span className="req">*</span> Birth Date:</label>
-                                    <input
-                                      type="date"
+                                    <DateField
                                       value={childDraft.birthDate}
-                                      onChange={(e) => updateChildDraft({ birthDate: e.target.value })}
+                                      onChange={(v) => updateChildDraft({ birthDate: v })}
                                       className="modern-input"
                                     />
                                   </div>
@@ -3260,10 +3377,9 @@ export default function ApplyWizard() {
 
                                   <div className="modern-field-group">
                                     <label>Paternity Date:</label>
-                                    <input
-                                      type="date"
+                                    <DateField
                                       value={childDraft.paternityDate}
-                                      onChange={(e) => updateChildDraft({ paternityDate: e.target.value })}
+                                      onChange={(v) => updateChildDraft({ paternityDate: v })}
                                       className="modern-input"
                                     />
                                   </div>
@@ -3336,7 +3452,7 @@ export default function ApplyWizard() {
                                             {fullName || 'Unnamed Child'}
                                           </button>
                                         </td>
-                                        <td>{child.birthDate}</td>
+                                        <td>{formatDateUS(child.birthDate)}</td>
                                         <td>{child.gender === 'male' ? 'Male' : child.gender === 'female' ? 'Female' : '—'}</td>
                                         <td>{child.relationship}</td>
                                         <td>
@@ -3375,8 +3491,8 @@ export default function ApplyWizard() {
                     <>
                       <FormBar title={t('field.ssn')} />
                       <div className="field-table" style={{ marginBottom: 8 }}>
-                        <FieldRow label={t('field.ssn')} hint="If known">
-                          <input type="text" value={details.noncustodialName.ssn} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                        <FieldRow label={t('field.ssn')} hint="If known (e.g., 123-45-6789)">
+                          <input type="text" value={formatSsn(details.noncustodialName.ssn)} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
                         </FieldRow>
                       </div>
 
@@ -3409,7 +3525,7 @@ export default function ApplyWizard() {
                         </div>
                         <div className="modern-field-group">
                           <label>{t('field.birthDate')}:</label>
-                          <input type="date" value={details.noncustodialName.birthDate} onChange={(e) => updateNoncustodialName({ birthDate: e.target.value })} className="modern-input" />
+                          <DateField value={details.noncustodialName.birthDate} onChange={(v) => updateNoncustodialName({ birthDate: v })} className="modern-input" />
                         </div>
                         <div className="modern-field-group">
                           <label>{t('field.birthCity')}:</label>
@@ -3441,7 +3557,7 @@ export default function ApplyWizard() {
                               <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
                             </FieldRow>
                             <FieldRow label={t('field.dateMarried')}>
-                              <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
+                              <DateField value={details.noncustodialName.dateMarried} onChange={(v) => updateNoncustodialName({ dateMarried: v })} />
                             </FieldRow>
                           </>
                         )}
@@ -3901,9 +4017,9 @@ export default function ApplyWizard() {
                         </FieldRow>
                         <FieldRow label="Dates Served">
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                            <input style={{ flex: 1, minWidth: 0 }} type="date" value={details.noncustodialMilitary.servedFrom} onChange={(e) => updateMilitary({ servedFrom: e.target.value })} />
+                            <DateField style={{ flex: 1, minWidth: 0 }} value={details.noncustodialMilitary.servedFrom} onChange={(v) => updateMilitary({ servedFrom: v })} />
                             <span style={{ color: 'var(--text-secondary)', fontSize: '13px', flexShrink: 0 }}>to</span>
-                            <input style={{ flex: 1, minWidth: 0 }} type="date" value={details.noncustodialMilitary.servedTo} onChange={(e) => updateMilitary({ servedTo: e.target.value })} />
+                            <DateField style={{ flex: 1, minWidth: 0 }} value={details.noncustodialMilitary.servedTo} onChange={(v) => updateMilitary({ servedTo: v })} />
                           </div>
                         </FieldRow>
                       </div>
@@ -4463,10 +4579,9 @@ export default function ApplyWizard() {
                               <div className="sof-field-row">
                                 <div className="sof-label">Date Filed <span className="req">*</span></div>
                                 <div className="sof-input-wrapper">
-                                  <input
-                                    type="date"
+                                  <DateField
                                     value={supportOrderDraft.dateFiled}
-                                    onChange={(e) => setSupportOrderDraft(p => ({ ...p, dateFiled: e.target.value }))}
+                                    onChange={(v) => setSupportOrderDraft(p => ({ ...p, dateFiled: v }))}
                                     className="modern-input"
                                   />
                                 </div>
@@ -4515,10 +4630,9 @@ export default function ApplyWizard() {
                                   <div className="sof-field-row">
                                     <div className="sof-label">Start Date <span className="req">*</span></div>
                                     <div className="sof-input-wrapper">
-                                      <input
-                                        type="date"
+                                      <DateField
                                         value={supportOrderDraft.startDate}
-                                        onChange={(e) => setSupportOrderDraft(p => ({ ...p, startDate: e.target.value }))}
+                                        onChange={(v) => setSupportOrderDraft(p => ({ ...p, startDate: v }))}
                                         className="modern-input"
                                       />
                                     </div>
@@ -4526,10 +4640,9 @@ export default function ApplyWizard() {
                                   <div className="sof-field-row">
                                     <div className="sof-label">End Date</div>
                                     <div className="sof-input-wrapper">
-                                      <input
-                                        type="date"
+                                      <DateField
                                         value={supportOrderDraft.endDate}
-                                        onChange={(e) => setSupportOrderDraft(p => ({ ...p, endDate: e.target.value }))}
+                                        onChange={(v) => setSupportOrderDraft(p => ({ ...p, endDate: v }))}
                                         className="modern-input"
                                       />
                                     </div>
@@ -4715,10 +4828,9 @@ export default function ApplyWizard() {
                                   />
                                 </div>
                                 <div className="ocf-input-row">
-                                  <input
-                                    type="date"
+                                  <DateField
                                     value={otherChildDraft.birthDate}
-                                    onChange={(e) => setOtherChildDraft(p => ({ ...p, birthDate: e.target.value }))}
+                                    onChange={(v) => setOtherChildDraft(p => ({ ...p, birthDate: v }))}
                                   />
                                 </div>
                               </div>
@@ -4776,7 +4888,7 @@ export default function ApplyWizard() {
                                   <td style={{ fontWeight: 600 }}>
                                     {[child.firstName, child.lastName].filter(Boolean).join(' ')}
                                   </td>
-                                  <td>{child.birthDate}</td>
+                                  <td>{formatDateUS(child.birthDate)}</td>
                                   <td>
                                     <button
                                       type="button"
@@ -5012,13 +5124,18 @@ export default function ApplyWizard() {
                         </div>
                         {editingSection === 'pref' ? (
                           <div className="review-edit-form-container">
-                            <ChoiceBox label="I want to:">
-                              <RadioRow name="app-mode" checked={form.applicationMode === 'new'} onChange={() => setForm(p => ({ ...p, applicationMode: 'new' }))} title="Start a New Application" />
-                              <RadioRow name="app-mode" checked={form.applicationMode === 'saved'} onChange={() => setForm(p => ({ ...p, applicationMode: 'saved' }))} title="Resume a Saved Application" />
+                            <ChoiceBox label="Application name:">
+                              <input
+                                type="text"
+                                className="modern-input"
+                                value={form.applicationName}
+                                maxLength={80}
+                                onChange={(e) => setForm((p) => ({ ...p, applicationName: e.target.value }))}
+                              />
                             </ChoiceBox>
                             <ChoiceBox label="I am the:">
-                              <RadioRow name="app-type" checked={form.applicantType === 'parent_guardian'} onChange={() => setForm(p => ({ ...p, applicantType: 'parent_guardian' }))} title="Parent or Guardian" description="I am applying for child support services for a child in my custody." />
-                              <RadioRow name="app-type" checked={form.applicantType === 'relative_caregiver'} onChange={() => setForm(p => ({ ...p, applicantType: 'relative_caregiver' }))} title="Relative or Caregiver" description="I am caring for a child who is not my biological child." />
+                              <RadioRow name="app-type" checked={form.applicantType === 'custodian'} onChange={() => setForm(p => ({ ...p, applicantType: 'custodian' }))} title="Custodial parent" description="I am applying for child support services for a child in my custody." />
+                              <RadioRow name="app-type" checked={form.applicantType === 'non-custodian'} onChange={() => setForm(p => ({ ...p, applicantType: 'non-custodian' }))} title="Non-Custodial parent" description="I am the parent who lives apart from the child / pays support." />
                             </ChoiceBox>
                             <ChoiceBox label="Service requested:">
                               <RadioRow name="assistance-type" checked={form.assistanceType === 'full'} onChange={() => setForm(p => ({ ...p, assistanceType: 'full' }))} title="Full Services" description="Locating parents, establishing paternity, establishing/modifying/enforcing support orders." />
@@ -5033,11 +5150,11 @@ export default function ApplyWizard() {
                           <div className="review-section-body review-data-grid">
                             <div className="review-data-item">
                               <span className="review-item-label">Applicant Type</span>
-                              <span className="review-item-value">{form.applicantType === 'parent_guardian' ? 'Parent or Guardian' : form.applicantType === 'relative_caregiver' ? 'Relative or Caregiver' : '—'}</span>
+                              <span className="review-item-value">{form.applicantType === 'custodian' ? 'Custodial parent' : form.applicantType === 'non-custodian' ? 'Non-Custodial parent' : '—'}</span>
                             </div>
                             <div className="review-data-item">
-                              <span className="review-item-label">Application Mode</span>
-                              <span className="review-item-value">{form.applicationMode === 'new' ? 'Start a New Application' : form.applicationMode === 'saved' ? 'Resume a Saved Application' : '—'}</span>
+                              <span className="review-item-label">Application Name</span>
+                              <span className="review-item-value">{form.applicationName || '—'}</span>
                             </div>
                             <div className="review-data-item">
                               <span className="review-item-label">Service Type</span>
@@ -5047,7 +5164,7 @@ export default function ApplyWizard() {
                               <span className="review-item-label">Receives Public Assistance</span>
                               <span className="review-item-value">{form.receivesPublicAssistance === 'yes' ? 'Yes' : form.receivesPublicAssistance === 'no' ? 'No' : '—'}</span>
                             </div>
-                            {form.applicantType === 'relative_caregiver' && (
+                            {form.applicantType === 'non-custodian' && (
                               <>
                                 <div className="review-data-item">
                                   <span className="review-item-label">Agreement</span>
@@ -5096,8 +5213,8 @@ export default function ApplyWizard() {
                               <FieldRow label="Suffix">
                                 <input type="text" value={details.custodialName.suffix} onChange={(e) => updateCustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
                               </FieldRow>
-                              <FieldRow label="SSN" required hint="(9 digits, numbers only)">
-                                <input type="text" value={details.custodialName.ssn} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                              <FieldRow label="SSN" required hint="(e.g., 123-45-6789)">
+                                <input type="text" value={formatSsn(details.custodialName.ssn)} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
                               </FieldRow>
                               <FieldRow label="Gender" required>
                                 <TriRadio
@@ -5108,7 +5225,7 @@ export default function ApplyWizard() {
                                 />
                               </FieldRow>
                               <FieldRow label="Birth Date" required>
-                                <input type="date" value={details.custodialName.birthDate} onChange={(e) => updateCustodialName({ birthDate: e.target.value })} />
+                                <DateField value={details.custodialName.birthDate} onChange={(v) => updateCustodialName({ birthDate: v })} />
                               </FieldRow>
                               <FieldRow label="Marital Status" required>
                                 <select value={details.custodialName.maritalStatus} onChange={(e) => updateCustodialName({ maritalStatus: e.target.value })}>
@@ -5125,7 +5242,7 @@ export default function ApplyWizard() {
                                     <input type="text" value={details.custodialName.spouseName} onChange={(e) => updateCustodialName({ spouseName: e.target.value })} />
                                   </FieldRow>
                                   <FieldRow label="Date Married">
-                                    <input type="date" value={details.custodialName.dateMarried} onChange={(e) => updateCustodialName({ dateMarried: e.target.value })} />
+                                    <DateField value={details.custodialName.dateMarried} onChange={(v) => updateCustodialName({ dateMarried: v })} />
                                   </FieldRow>
                                 </>
                               )}
@@ -5217,8 +5334,8 @@ export default function ApplyWizard() {
                           <div className="review-section-body review-data-grid">
                             <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.custodialName.firstName, details.custodialName.middleName, details.custodialName.lastName, details.custodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{details.custodialName.gender ? details.custodialName.gender.toUpperCase() : '—'}</span></div>
-                            <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{details.custodialName.ssn || '—'}</span></div>
-                            <div className="review-data-item"><span className="review-item-label">Birth Date</span><span className="review-item-value">{details.custodialName.birthDate || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(details.custodialName.ssn) || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">Birth Date</span><span className="review-item-value">{formatDateUS(details.custodialName.birthDate) || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.custodialName.maritalStatus || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Maiden Name</span><span className="review-item-value">{details.custodialName.maidenName || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Spouse Name</span><span className="review-item-value">{details.custodialName.spouseName || '—'}</span></div>
@@ -5307,7 +5424,7 @@ export default function ApplyWizard() {
                                     </div>
                                     <div className="modern-field-group">
                                       <label>Social Security Number:</label>
-                                      <input type="text" value={childDraft.ssn} onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} className="modern-input" />
+                                      <input type="text" value={formatSsn(childDraft.ssn)} onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} className="modern-input" />
                                     </div>
                                     <div className="modern-field-group">
                                       <label><span className="req">*</span> Gender:</label>
@@ -5326,7 +5443,7 @@ export default function ApplyWizard() {
                                   <div className="ocf-three-col-grid">
                                     <div className="modern-field-group">
                                       <label><span className="req">*</span> Birth Date:</label>
-                                      <input type="date" value={childDraft.birthDate} onChange={(e) => updateChildDraft({ birthDate: e.target.value })} className="modern-input" />
+                                      <DateField value={childDraft.birthDate} onChange={(v) => updateChildDraft({ birthDate: v })} className="modern-input" />
                                     </div>
                                     <div className="modern-field-group">
                                       <label><span className="req">*</span> Birth City:</label>
@@ -5373,7 +5490,7 @@ export default function ApplyWizard() {
                                     </div>
                                     <div className="modern-field-group">
                                       <label>Paternity Date:</label>
-                                      <input type="date" value={childDraft.paternityDate} onChange={(e) => updateChildDraft({ paternityDate: e.target.value })} className="modern-input" />
+                                      <DateField value={childDraft.paternityDate} onChange={(v) => updateChildDraft({ paternityDate: v })} className="modern-input" />
                                     </div>
                                   </div>
 
@@ -5408,7 +5525,7 @@ export default function ApplyWizard() {
                                           {form.children.map((child) => (
                                             <tr key={child.id}>
                                               <td style={{ fontWeight: 600 }}>{[child.firstName, child.lastName].filter(Boolean).join(' ')}</td>
-                                              <td>{child.birthDate}</td>
+                                              <td>{formatDateUS(child.birthDate)}</td>
                                               <td>{child.gender ? child.gender.toUpperCase() : '—'}</td>
                                               <td>{child.relationship}</td>
                                               <td>
@@ -5439,11 +5556,11 @@ export default function ApplyWizard() {
                                       </h4>
                                       <div className="review-data-grid">
                                         <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{child.gender ? child.gender.toUpperCase() : '—'}</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">Birth Date / Place</span><span className="review-item-value">{child.birthDate} ({child.birthCity || '—'}, {child.birthState || '—'})</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{child.ssn || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Birth Date / Place</span><span className="review-item-value">{formatDateUS(child.birthDate) || '—'} ({child.birthCity || '—'}, {child.birthState || '—'})</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(child.ssn) || '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">Relationship</span><span className="review-item-value">{child.relationship || '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">State</span><span className="review-item-value">{child.state || '—'}</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">Paternity Established</span><span className="review-item-value">{child.paternityEstablished ? child.paternityEstablished.toUpperCase() : '—'} {child.paternityDate ? `on ${child.paternityDate}` : ''}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Paternity Established</span><span className="review-item-value">{child.paternityEstablished ? child.paternityEstablished.toUpperCase() : '—'} {child.paternityDate ? `on ${formatDateUS(child.paternityDate)}` : ''}</span></div>
                                       </div>
                                     </div>
                                   ))}
@@ -5484,8 +5601,8 @@ export default function ApplyWizard() {
                                 <FieldRow label="Suffix">
                                   <input type="text" value={details.noncustodialName.suffix} onChange={(e) => updateNoncustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
                                 </FieldRow>
-                                <FieldRow label="SSN">
-                                  <input type="text" value={details.noncustodialName.ssn} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={9} />
+                                <FieldRow label="SSN" hint="(e.g., 123-45-6789)">
+                                  <input type="text" value={formatSsn(details.noncustodialName.ssn)} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
                                 </FieldRow>
                                 <FieldRow label="Gender">
                                   <TriRadio
@@ -5496,7 +5613,7 @@ export default function ApplyWizard() {
                                   />
                                 </FieldRow>
                                 <FieldRow label="Birth Date">
-                                  <input type="date" value={details.noncustodialName.birthDate} onChange={(e) => updateNoncustodialName({ birthDate: e.target.value })} />
+                                  <DateField value={details.noncustodialName.birthDate} onChange={(v) => updateNoncustodialName({ birthDate: v })} />
                                 </FieldRow>
                                 <FieldRow label="Birth City">
                                   <input type="text" value={details.noncustodialName.birthCity} onChange={(e) => updateNoncustodialName({ birthCity: e.target.value })} />
@@ -5522,7 +5639,7 @@ export default function ApplyWizard() {
                                       <input type="text" value={details.noncustodialName.spouseName} onChange={(e) => updateNoncustodialName({ spouseName: e.target.value })} />
                                     </FieldRow>
                                     <FieldRow label="Date Married">
-                                      <input type="date" value={details.noncustodialName.dateMarried} onChange={(e) => updateNoncustodialName({ dateMarried: e.target.value })} />
+                                      <DateField value={details.noncustodialName.dateMarried} onChange={(v) => updateNoncustodialName({ dateMarried: v })} />
                                     </FieldRow>
                                   </>
                                 )}
@@ -5734,14 +5851,14 @@ export default function ApplyWizard() {
                           ) : (
                             <div className="review-section-body review-data-grid">
                               <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.noncustodialName.firstName, details.noncustodialName.middleName, details.noncustodialName.lastName, details.noncustodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
-                              <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{details.noncustodialName.ssn || '—'}</span></div>
-                              <div className="review-data-item"><span className="review-item-label">Birth details</span><span className="review-item-value">{details.noncustodialName.birthDate || '—'} ({[details.noncustodialName.birthCity, details.noncustodialName.birthState].filter(Boolean).join(', ') || '—'})</span></div>
+                              <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(details.noncustodialName.ssn) || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">Birth details</span><span className="review-item-value">{formatDateUS(details.noncustodialName.birthDate) || '—'} ({[details.noncustodialName.birthCity, details.noncustodialName.birthState].filter(Boolean).join(', ') || '—'})</span></div>
                               <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.noncustodialName.maritalStatus || '—'}</span></div>
                               {details.noncustodialName.maritalStatus && details.noncustodialName.maritalStatus !== 'Single' && (
                                 <>
                                   <div className="review-data-item"><span className="review-item-label">Maiden Name</span><span className="review-item-value">{details.noncustodialName.maidenName || '—'}</span></div>
                                   <div className="review-data-item"><span className="review-item-label">Spouse Name</span><span className="review-item-value">{details.noncustodialName.spouseName || '—'}</span></div>
-                                  <div className="review-data-item"><span className="review-item-label">Date Married</span><span className="review-item-value">{details.noncustodialName.dateMarried || '—'}</span></div>
+                                  <div className="review-data-item"><span className="review-item-label">Date Married</span><span className="review-item-value">{formatDateUS(details.noncustodialName.dateMarried) || '—'}</span></div>
                                 </>
                               )}
                               <div className="review-data-item"><span className="review-item-label">Physical Description</span><span className="review-item-value">
@@ -5812,7 +5929,7 @@ export default function ApplyWizard() {
                                       </select>
                                     </FieldRow>
                                     <FieldRow label="Date Filed" required>
-                                      <input type="date" value={supportOrderDraft.dateFiled} onChange={(e) => setSupportOrderDraft(p => ({ ...p, dateFiled: e.target.value }))} />
+                                      <DateField value={supportOrderDraft.dateFiled} onChange={(v) => setSupportOrderDraft(p => ({ ...p, dateFiled: v }))} />
                                     </FieldRow>
                                     <FieldRow label="Amount" required>
                                       <input type="number" min={0} value={supportOrderDraft.amount} onChange={(e) => setSupportOrderDraft(p => ({ ...p, amount: e.target.value }))} placeholder="0.00" />
@@ -5826,10 +5943,10 @@ export default function ApplyWizard() {
                                       </select>
                                     </FieldRow>
                                     <FieldRow label="Start Date" required>
-                                      <input type="date" value={supportOrderDraft.startDate} onChange={(e) => setSupportOrderDraft(p => ({ ...p, startDate: e.target.value }))} />
+                                      <DateField value={supportOrderDraft.startDate} onChange={(v) => setSupportOrderDraft(p => ({ ...p, startDate: v }))} />
                                     </FieldRow>
                                     <FieldRow label="End Date">
-                                      <input type="date" value={supportOrderDraft.endDate} onChange={(e) => setSupportOrderDraft(p => ({ ...p, endDate: e.target.value }))} />
+                                      <DateField value={supportOrderDraft.endDate} onChange={(v) => setSupportOrderDraft(p => ({ ...p, endDate: v }))} />
                                     </FieldRow>
                                   </div>
 
@@ -5897,9 +6014,9 @@ export default function ApplyWizard() {
                                       </h4>
                                       <div className="review-data-grid">
                                         <div className="review-data-item"><span className="review-item-label">State Filed</span><span className="review-item-value">{order.stateFiled || '—'}</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">Date Filed</span><span className="review-item-value">{order.dateFiled || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Date Filed</span><span className="review-item-value">{formatDateUS(order.dateFiled) || '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">Payment</span><span className="review-item-value">${order.amount} ({order.frequency})</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">Dates</span><span className="review-item-value">{order.startDate} to {order.endDate || 'Present'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">Dates</span><span className="review-item-value">{formatDateUS(order.startDate) || '—'} to {formatDateUS(order.endDate) || 'Present'}</span></div>
                                       </div>
                                     </div>
                                   ))}
@@ -5942,7 +6059,7 @@ export default function ApplyWizard() {
                                     <input type="text" value={otherChildDraft.suffix} onChange={(e) => setOtherChildDraft(p => ({ ...p, suffix: e.target.value }))} />
                                   </FieldRow>
                                   <FieldRow label="Birth Date" required>
-                                    <input type="date" value={otherChildDraft.birthDate} onChange={(e) => setOtherChildDraft(p => ({ ...p, birthDate: e.target.value }))} />
+                                    <DateField value={otherChildDraft.birthDate} onChange={(v) => setOtherChildDraft(p => ({ ...p, birthDate: v }))} />
                                   </FieldRow>
                                 </div>
 
@@ -5975,7 +6092,7 @@ export default function ApplyWizard() {
                                         {form.otherChildren.map((child) => (
                                           <tr key={child.id}>
                                             <td style={{ fontWeight: 600 }}>{[child.firstName, child.lastName].filter(Boolean).join(' ')}</td>
-                                            <td>{child.birthDate}</td>
+                                            <td>{formatDateUS(child.birthDate)}</td>
                                             <td>
                                               <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
                                                 <button type="button" className="apply-btn apply-btn-outline" style={{ padding: '2px 8px', fontSize: '11px', height: '24px' }} onClick={() => startEditingOtherChild(child)}>Edit</button>
@@ -5999,7 +6116,7 @@ export default function ApplyWizard() {
                               form.otherChildren.map((child, idx) => (
                                 <div className="review-data-item" key={child.id || idx}>
                                   <span className="review-item-label">Child #{idx + 1} Name</span>
-                                  <span className="review-item-value">{[child.firstName, child.lastName].filter(Boolean).join(' ')} (DOB: {child.birthDate})</span>
+                                  <span className="review-item-value">{[child.firstName, child.lastName].filter(Boolean).join(' ')} (DOB: {formatDateUS(child.birthDate) || '—'})</span>
                                 </div>
                               ))
                             )}
@@ -6234,7 +6351,7 @@ export default function ApplyWizard() {
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.ssn')}</span>
-                <span className="rf-value">{selectedChildForView.ssn || '—'}</span>
+                <span className="rf-value">{formatSsn(selectedChildForView.ssn) || '—'}</span>
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.gender')}</span>
@@ -6242,7 +6359,7 @@ export default function ApplyWizard() {
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.birthDate')}</span>
-                <span className="rf-value">{selectedChildForView.birthDate || '—'}</span>
+                <span className="rf-value">{formatDateUS(selectedChildForView.birthDate) || '—'}</span>
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.birthCity')}</span>
@@ -6264,7 +6381,7 @@ export default function ApplyWizard() {
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.paternityDate')}</span>
-                <span className="rf-value">{selectedChildForView.paternityDate || '—'}</span>
+                <span className="rf-value">{formatDateUS(selectedChildForView.paternityDate) || '—'}</span>
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.state')}</span>

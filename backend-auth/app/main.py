@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from . import config
 from .db import close_pool, fetch_one, get_pool
-from .routers import applications, cognito
+from .routers import applications, auth, cognito
 
 
 @asynccontextmanager
@@ -27,6 +27,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router)
 app.include_router(cognito.router)
 app.include_router(applications.router)
 
