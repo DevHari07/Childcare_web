@@ -124,41 +124,118 @@ export default function ParentDashboard() {
         />
       </div>
 
-      <div className="csd-chart-grid csd-chart-grid-2to1">
-        {/* Applications */}
-        <ChartCard
-          title="Applications"
-          right={
-            <Link href="/parent/applications" className="csd-textlink">
-              View all <ArrowUpRight size={14} strokeWidth={2.4} />
-            </Link>
-          }
-        >
-          {apps.length === 0 ? (
-            <p className="csd-empty" style={{ textAlign: 'center', padding: '24px 0' }}>
-              You haven&apos;t started an application yet.
-            </p>
-          ) : (
-            <ul className="csd-applist">
-              {apps.slice(0, 4).map((a) => (
-                <li key={a.id} className="csd-applist-item">
-                  <span className="csd-applist-main">
-                    <span className="csd-cell-strong">{a.name}</span>
-                    <span className="csd-cell-dim">
-                      {a.isDraft ? 'Not assigned' : a.id} · {longDate(a.createdDate)}
-                    </span>
-                  </span>
-                  <StatusPill status={a.status} />
-                  {a.isDraft && (
-                    <button type="button" className="gov-btn gov-btn-primary gov-btn-sm" onClick={() => router.push('/apply')}>
-                      Continue
-                    </button>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </ChartCard>
+      <div className="csd-chart-grid csd-chart-grid-2to1 csd-chart-grid-top">
+        {/* Left column: Applications + Cases stacked */}
+        <div className="csd-chart-col">
+          <ChartCard
+            title="Applications"
+            right={
+              <Link href="/parent/applications" className="csd-textlink">
+                View all <ArrowUpRight size={14} strokeWidth={2.4} />
+              </Link>
+            }
+          >
+            {apps.length === 0 ? (
+              <p className="csd-empty" style={{ textAlign: 'center', padding: '24px 0' }}>
+                You haven&apos;t started an application yet.
+              </p>
+            ) : (
+              <div className="csd-table-wrap csd-table-flush">
+                <table className="csd-table">
+                  <thead>
+                    <tr>
+                      <th>Application</th>
+                      <th>Application no</th>
+                      <th>Date</th>
+                      <th>Status</th>
+                      <th aria-label="Actions" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {apps.slice(0, 4).map((a) => (
+                      <tr
+                        key={a.id}
+                        className={a.isDraft ? 'csd-row-link' : undefined}
+                        onClick={a.isDraft ? () => router.push('/apply') : undefined}
+                      >
+                        <td>
+                          <span className="csd-cell-strong">{a.name}</span>
+                        </td>
+                        <td>{a.isDraft ? 'Not assigned' : a.id}</td>
+                        <td>{longDate(a.createdDate)}</td>
+                        <td>
+                          <StatusPill status={a.status} />
+                        </td>
+                        <td className="csd-num">
+                          {a.isDraft && (
+                            <button
+                              type="button"
+                              className="gov-btn gov-btn-primary gov-btn-sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                router.push('/apply');
+                              }}
+                            >
+                              Continue
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </ChartCard>
+
+          <ChartCard
+            title={`Cases (${cases.length})`}
+            right={
+              <Link href="/parent/cases" className="csd-textlink">
+                View all <ArrowUpRight size={14} strokeWidth={2.4} />
+              </Link>
+            }
+          >
+            {cases.length === 0 ? (
+              <p className="csd-empty">You don&apos;t have any cases yet.</p>
+            ) : (
+              <div className="csd-table-wrap csd-table-flush">
+                <table className="csd-table">
+                  <thead>
+                    <tr>
+                      <th>Case</th>
+                      <th>Status</th>
+                      <th className="csd-num">Balance owed</th>
+                      <th>Paid vs balance</th>
+                      <th className="csd-num">Last payment</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cases.map((c) => (
+                      <tr key={c.id} className="csd-row-link" onClick={() => router.push(`/parent/cases/${c.id}`)}>
+                        <td>
+                          <span className="csd-cell-strong">{c.title}</span>
+                          <span className="csd-cell-dim">#{c.caseNumber}</span>
+                        </td>
+                        <td>
+                          <StatusPill status={c.status} />
+                        </td>
+                        <td className="csd-num">{money(c.paymentDue)}</td>
+                        <td>
+                          <MiniMeter paid={c.lastPaymentAmount ? c.lastPaymentAmount * 12 : 0} total={c.paymentDue} />
+                        </td>
+                        <td className="csd-num">
+                          {c.lastPaymentAmount != null ? money(c.lastPaymentAmount) : '—'}
+                          <span className="csd-cell-dim">{c.lastPaymentDate ? shortDate(c.lastPaymentDate) : ''}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </ChartCard>
+        </div>
 
         {/* Activity */}
         <ChartCard title="Recent activity">
@@ -185,56 +262,6 @@ export default function ParentDashboard() {
           )}
         </ChartCard>
       </div>
-
-      {/* Cases table */}
-      <ChartCard
-        title="Cases"
-        subtitle={`${cases.length} active`}
-        right={
-          <Link href="/parent/cases" className="csd-textlink">
-            View all <ArrowUpRight size={14} strokeWidth={2.4} />
-          </Link>
-        }
-      >
-        {cases.length === 0 ? (
-          <p className="csd-empty">You don&apos;t have any cases yet.</p>
-        ) : (
-          <div className="csd-table-wrap csd-table-flush">
-            <table className="csd-table">
-              <thead>
-                <tr>
-                  <th>Case</th>
-                  <th>Status</th>
-                  <th className="csd-num">Balance owed</th>
-                  <th>Paid vs balance</th>
-                  <th className="csd-num">Last payment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {cases.map((c) => (
-                  <tr key={c.id} className="csd-row-link" onClick={() => router.push(`/parent/cases/${c.id}`)}>
-                    <td>
-                      <span className="csd-cell-strong">{c.title}</span>
-                      <span className="csd-cell-dim">#{c.caseNumber}</span>
-                    </td>
-                    <td>
-                      <StatusPill status={c.status} />
-                    </td>
-                    <td className="csd-num">{money(c.paymentDue)}</td>
-                    <td>
-                      <MiniMeter paid={c.lastPaymentAmount ? c.lastPaymentAmount * 12 : 0} total={c.paymentDue} />
-                    </td>
-                    <td className="csd-num">
-                      {c.lastPaymentAmount != null ? money(c.lastPaymentAmount) : '—'}
-                      <span className="csd-cell-dim">{c.lastPaymentDate ? shortDate(c.lastPaymentDate) : ''}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </ChartCard>
     </div>
   );
 }

@@ -4821,6 +4821,15 @@ select.csd-input { cursor: pointer; }
 }
 .csd-chart-grid-2to1 { grid-template-columns: 1.9fr 1fr; }
 
+/* Row whose left column stacks two cards next to Recent activity, tops aligned. */
+.csd-chart-grid-top { align-items: start; }
+.csd-chart-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
 .csd-chart-card {
   background: var(--white);
   border: 1px solid var(--border-color);
