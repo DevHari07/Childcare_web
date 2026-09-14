@@ -34,17 +34,9 @@ import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { TranslationKey } from '@/lib/i18n/en';
 import * as applicationsApi from '@/lib/applicationsApi';
 import DateField from '@components/DateField';
+import SsnField from '@components/SsnField';
+import MaskedSsn from '@components/MaskedSsn';
 import { formatDateUS, parseDateToIso } from '@/lib/dateFormat';
-
-// Display a Social Security Number as XXX-XX-XXXX. Accepts raw digits or an
-// already-formatted value; strips non-digits and formats progressively so it
-// also works as you type. Stored value stays digits-only.
-function formatSsn(raw: string | null | undefined): string {
-  const d = (raw ?? '').replace(/\D/g, '').slice(0, 9);
-  if (d.length <= 3) return d;
-  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
-}
 
 interface StoredUser {
   id: number;
@@ -1074,7 +1066,11 @@ export default function ApplyWizard() {
       !childDraft.paternityEstablished ||
       !childDraft.state
     ) {
-      setError(t('apply.step.childValidationMsg') || 'Please fill in all required fields for the child.');
+      setError(
+        !childDraft.birthDate
+          ? 'Check the Birth Date field — enter it as MM/DD/YYYY (month first).'
+          : t('apply.step.childValidationMsg') || 'Please fill in all required fields for the child.',
+      );
       return;
     }
     setError('');
@@ -1874,7 +1870,18 @@ export default function ApplyWizard() {
           id = await createServerApplication(payload);
           if (id) submitted = await applicationsApi.submitApplication(id, submitBody);
         }
-        if (submitted) ref = submitted.reference_code || localRef;
+        if (submitted) {
+          ref = submitted.reference_code || localRef;
+          // Applicant clicked "I AGREE" and the application is now SUBMITTED —
+          // hand it to the CCMS worker. Best-effort: a failure here must not
+          // block the applicant's confirmation (the row is still submitted and
+          // can be pushed again later).
+          try {
+            await applicationsApi.pushApplicationToWorker(submitted.id);
+          } catch (pushErr) {
+            console.error('CCMS worker push failed (application still submitted):', pushErr);
+          }
+        }
       }
     } catch (e) {
       // Submit failed server-side — fall through to the local-only record so the
@@ -1950,7 +1957,11 @@ export default function ApplyWizard() {
       !childDraft.paternityEstablished ||
       !childDraft.state
     ) {
-      setError(t('apply.step.childValidationMsg') || 'Please fill in all required fields for the child.');
+      setError(
+        !childDraft.birthDate
+          ? 'Check the Birth Date field — enter it as MM/DD/YYYY (month first).'
+          : t('apply.step.childValidationMsg') || 'Please fill in all required fields for the child.',
+      );
       return;
     }
     setError('');
@@ -2992,7 +3003,7 @@ export default function ApplyWizard() {
                       <div className="field-table" style={{ marginBottom: 8 }}>
                         <FieldRow label={t('field.ssn')} required hint="(e.g., 123-45-6789)">
                           <div style={{ display: 'flex', gap: 8 }}>
-                            <input style={{ flex: 1 }} type="text" value={formatSsn(details.custodialName.ssn)} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
+                            <SsnField style={{ flex: 1 }} value={details.custodialName.ssn} onChange={(v) => updateCustodialName({ ssn: v })} />
                             <button type="button" className="apply-btn apply-btn-outline" style={{ flexShrink: 0 }} onClick={handleRetrieveCustodialMockData}>
                               Retrieve
                             </button>
@@ -3247,11 +3258,9 @@ export default function ApplyWizard() {
                                   </div>
                                   <div className="modern-field-group">
                                     <label>Social Security Number:</label>
-                                    <input
-                                      type="text"
-                                      value={formatSsn(childDraft.ssn)}
-                                      onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })}
-                                      maxLength={11}
+                                    <SsnField
+                                      value={childDraft.ssn}
+                                      onChange={(v) => updateChildDraft({ ssn: v })}
                                       className="modern-input"
                                     />
                                     <span style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
@@ -3492,7 +3501,7 @@ export default function ApplyWizard() {
                       <FormBar title={t('field.ssn')} />
                       <div className="field-table" style={{ marginBottom: 8 }}>
                         <FieldRow label={t('field.ssn')} hint="If known (e.g., 123-45-6789)">
-                          <input type="text" value={formatSsn(details.noncustodialName.ssn)} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
+                          <SsnField value={details.noncustodialName.ssn} onChange={(v) => updateNoncustodialName({ ssn: v })} />
                         </FieldRow>
                       </div>
 
@@ -5214,7 +5223,7 @@ export default function ApplyWizard() {
                                 <input type="text" value={details.custodialName.suffix} onChange={(e) => updateCustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
                               </FieldRow>
                               <FieldRow label="SSN" required hint="(e.g., 123-45-6789)">
-                                <input type="text" value={formatSsn(details.custodialName.ssn)} onChange={(e) => updateCustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
+                                <SsnField value={details.custodialName.ssn} onChange={(v) => updateCustodialName({ ssn: v })} />
                               </FieldRow>
                               <FieldRow label="Gender" required>
                                 <TriRadio
@@ -5334,7 +5343,7 @@ export default function ApplyWizard() {
                           <div className="review-section-body review-data-grid">
                             <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.custodialName.firstName, details.custodialName.middleName, details.custodialName.lastName, details.custodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{details.custodialName.gender ? details.custodialName.gender.toUpperCase() : '—'}</span></div>
-                            <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(details.custodialName.ssn) || '—'}</span></div>
+                            <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value"><MaskedSsn value={details.custodialName.ssn} /></span></div>
                             <div className="review-data-item"><span className="review-item-label">Birth Date</span><span className="review-item-value">{formatDateUS(details.custodialName.birthDate) || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.custodialName.maritalStatus || '—'}</span></div>
                             <div className="review-data-item"><span className="review-item-label">Maiden Name</span><span className="review-item-value">{details.custodialName.maidenName || '—'}</span></div>
@@ -5424,7 +5433,7 @@ export default function ApplyWizard() {
                                     </div>
                                     <div className="modern-field-group">
                                       <label>Social Security Number:</label>
-                                      <input type="text" value={formatSsn(childDraft.ssn)} onChange={(e) => updateChildDraft({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} className="modern-input" />
+                                      <SsnField value={childDraft.ssn} onChange={(v) => updateChildDraft({ ssn: v })} className="modern-input" />
                                     </div>
                                     <div className="modern-field-group">
                                       <label><span className="req">*</span> Gender:</label>
@@ -5557,7 +5566,7 @@ export default function ApplyWizard() {
                                       <div className="review-data-grid">
                                         <div className="review-data-item"><span className="review-item-label">Gender</span><span className="review-item-value">{child.gender ? child.gender.toUpperCase() : '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">Birth Date / Place</span><span className="review-item-value">{formatDateUS(child.birthDate) || '—'} ({child.birthCity || '—'}, {child.birthState || '—'})</span></div>
-                                        <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(child.ssn) || '—'}</span></div>
+                                        <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value"><MaskedSsn value={child.ssn} /></span></div>
                                         <div className="review-data-item"><span className="review-item-label">Relationship</span><span className="review-item-value">{child.relationship || '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">State</span><span className="review-item-value">{child.state || '—'}</span></div>
                                         <div className="review-data-item"><span className="review-item-label">Paternity Established</span><span className="review-item-value">{child.paternityEstablished ? child.paternityEstablished.toUpperCase() : '—'} {child.paternityDate ? `on ${formatDateUS(child.paternityDate)}` : ''}</span></div>
@@ -5602,7 +5611,7 @@ export default function ApplyWizard() {
                                   <input type="text" value={details.noncustodialName.suffix} onChange={(e) => updateNoncustodialName({ suffix: e.target.value })} placeholder="Jr., Sr., III" />
                                 </FieldRow>
                                 <FieldRow label="SSN" hint="(e.g., 123-45-6789)">
-                                  <input type="text" value={formatSsn(details.noncustodialName.ssn)} onChange={(e) => updateNoncustodialName({ ssn: e.target.value.replace(/[^\d]/g, '') })} maxLength={11} />
+                                  <SsnField value={details.noncustodialName.ssn} onChange={(v) => updateNoncustodialName({ ssn: v })} />
                                 </FieldRow>
                                 <FieldRow label="Gender">
                                   <TriRadio
@@ -5851,7 +5860,7 @@ export default function ApplyWizard() {
                           ) : (
                             <div className="review-section-body review-data-grid">
                               <div className="review-data-item"><span className="review-item-label">Full Name</span><span className="review-item-value">{[details.noncustodialName.firstName, details.noncustodialName.middleName, details.noncustodialName.lastName, details.noncustodialName.suffix].filter(Boolean).join(' ') || '—'}</span></div>
-                              <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value">{formatSsn(details.noncustodialName.ssn) || '—'}</span></div>
+                              <div className="review-data-item"><span className="review-item-label">SSN</span><span className="review-item-value"><MaskedSsn value={details.noncustodialName.ssn} /></span></div>
                               <div className="review-data-item"><span className="review-item-label">Birth details</span><span className="review-item-value">{formatDateUS(details.noncustodialName.birthDate) || '—'} ({[details.noncustodialName.birthCity, details.noncustodialName.birthState].filter(Boolean).join(', ') || '—'})</span></div>
                               <div className="review-data-item"><span className="review-item-label">Marital Status</span><span className="review-item-value">{details.noncustodialName.maritalStatus || '—'}</span></div>
                               {details.noncustodialName.maritalStatus && details.noncustodialName.maritalStatus !== 'Single' && (
@@ -6319,7 +6328,8 @@ export default function ApplyWizard() {
                       )
                     ) : (
                       <button type="button" className="apply-btn apply-btn-primary" onClick={handleNext}>
-                        {t('apply.next')}
+                        {/* The step right after "My Application" is Review, so say that instead of a generic "Next". */}
+                        {currentStep.key === 'household' ? t('apply.step.review.label') : t('apply.next')}
                         <ArrowRight size={16} strokeWidth={2} />
                       </button>
                     )}
@@ -6351,7 +6361,7 @@ export default function ApplyWizard() {
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.ssn')}</span>
-                <span className="rf-value">{formatSsn(selectedChildForView.ssn) || '—'}</span>
+                <span className="rf-value"><MaskedSsn value={selectedChildForView.ssn} /></span>
               </div>
               <div className="review-field">
                 <span className="rf-label">{t('field.gender')}</span>

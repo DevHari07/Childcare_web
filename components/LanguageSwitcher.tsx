@@ -29,7 +29,11 @@ export default function LanguageSwitcher() {
   const choose = (code: LanguageCode) => {
     setOpen(false);
     if (code === language) return;
-    setGoogleTranslateLanguage(code); // sets the googtrans cookie and reloads
+    // Reflect the choice in the button right away: when the Google Translate
+    // widget is already mounted, setGoogleTranslateLanguage() applies the new
+    // language in place without a reload, so nothing else would update this.
+    setLanguage(code);
+    setGoogleTranslateLanguage(code); // sets the googtrans cookie; reloads only if the widget isn't ready
   };
 
   return (

@@ -44,6 +44,11 @@ export default function DateField({ value, onChange, onBlur, ...rest }: DateFiel
     onBlur?.(e);
   };
 
+  // A fully typed date that isn't a real calendar date (e.g. 02/30/2023, or a
+  // day/month typed in the wrong order). Flag it here so the field itself shows
+  // the problem instead of only a generic "required fields" error on submit.
+  const invalid = text.length === 10 && !usToIso(text);
+
   return (
     <input
       {...rest}
@@ -55,6 +60,8 @@ export default function DateField({ value, onChange, onBlur, ...rest }: DateFiel
       value={text}
       onChange={(e) => handleChange(e.target.value)}
       onBlur={handleBlur}
+      aria-invalid={invalid || undefined}
+      title={invalid ? "Enter a real date as MM/DD/YYYY (month first)" : rest.title}
     />
   );
 }

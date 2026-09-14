@@ -4,9 +4,9 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from . import config
+from . import ccms_db, config
 from .db import close_pool, fetch_one, get_pool
-from .routers import applications, auth, cognito
+from .routers import applications, auth, cognito, worker
 
 
 @asynccontextmanager
@@ -14,6 +14,7 @@ async def lifespan(_: FastAPI):
     get_pool()  # open the DB pool eagerly so a bad DSN fails fast
     yield
     close_pool()
+    ccms_db.close_pool()
 
 
 app = FastAPI(title="Childcare Backend", version="2.0.0", lifespan=lifespan)
@@ -21,7 +22,10 @@ app = FastAPI(title="Childcare Backend", version="2.0.0", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=config.CORS_ORIGINS,
-    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+    # localhost/127.0.0.1 at any port, plus VS Code / GitHub dev tunnels
+    # (https://<id>-<port>.<region>.devtunnels.ms) so the frontend can be
+    # opened from a forwarded tunnel URL instead of localhost.
+    allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?|https://[a-z0-9-]+(\.[a-z0-9-]+)*\.devtunnels\.ms",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -30,6 +34,7 @@ app.add_middleware(
 app.include_router(auth.router)
 app.include_router(cognito.router)
 app.include_router(applications.router)
+app.include_router(worker.router)
 
 
 @app.get("/")

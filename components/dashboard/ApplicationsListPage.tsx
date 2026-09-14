@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronRight, Search } from 'lucide-react';
 import { CsdPage, StatusPill, useDashboardAuth } from '@components/dashboard/DashboardUI';
-import { getApplications, longDate, type ApplicationSummary } from '@/lib/dashboardData';
+import { fetchApplications, longDate, type ApplicationSummary } from '@/lib/dashboardData';
 
 export default function ApplicationsListPage() {
   const router = useRouter();
@@ -13,7 +13,12 @@ export default function ApplicationsListPage() {
   const [q, setQ] = useState('');
 
   useEffect(() => {
-    if (ready) setApps(getApplications(user));
+    if (!ready) return;
+    let cancelled = false;
+    fetchApplications()
+      .then((list) => { if (!cancelled) setApps(list); })
+      .catch(() => { if (!cancelled) setApps([]); });
+    return () => { cancelled = true; };
   }, [ready, user]);
 
   const filtered = useMemo(() => {

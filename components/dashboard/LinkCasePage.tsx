@@ -5,13 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Link2, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { CsdPage, useDashboardAuth } from '@components/dashboard/DashboardUI';
 import DateField from '@components/DateField';
-
-function formatSsn(raw: string) {
-  const d = raw.replace(/\D/g, '').slice(0, 9);
-  if (d.length <= 3) return d;
-  if (d.length <= 5) return `${d.slice(0, 3)}-${d.slice(3)}`;
-  return `${d.slice(0, 3)}-${d.slice(3, 5)}-${d.slice(5)}`;
-}
+import SsnField from '@components/SsnField';
 
 export default function LinkCasePage() {
   const router = useRouter();
@@ -21,12 +15,12 @@ export default function LinkCasePage() {
   const [lastName, setLastName] = useState('');
   const [gender, setGender] = useState('');
   const [dob, setDob] = useState('');
-  const [ssn, setSsn] = useState('');
+  const [ssn, setSsn] = useState(''); // raw digits
   const [submitted, setSubmitted] = useState(false);
 
   if (!ready || !user) return null;
 
-  const ssnDigits = ssn.replace(/\D/g, '');
+  const ssnDigits = ssn;
   const valid =
     firstName.trim() &&
     lastName.trim() &&
@@ -115,14 +109,7 @@ export default function LinkCasePage() {
             <span className="csd-field-label">
               Social Security Number <span className="csd-req">*</span>
             </span>
-            <input
-              className="csd-input"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="000-00-0000"
-              value={ssn}
-              onChange={(e) => setSsn(formatSsn(e.target.value))}
-            />
+            <SsnField className="csd-input" value={ssn} onChange={setSsn} placeholder="000-00-0000" />
           </label>
 
           <div className="csd-form-actions">

@@ -43,11 +43,15 @@ export function usToIso(value: string | null | undefined): string {
   if (!m) return '';
   const mm = m[1].padStart(2, '0');
   const dd = m[2].padStart(2, '0');
+  const year = Number(m[3]);
+  // Guard against transposed input (e.g. a day typed into the year slot):
+  // no date this app collects falls outside this range.
+  if (year < 1900 || year > new Date().getFullYear() + 20) return '';
   const iso = `${m[3]}-${mm}-${dd}`;
   const d = new Date(`${iso}T00:00:00`);
   if (
     Number.isNaN(d.getTime()) ||
-    d.getFullYear() !== Number(m[3]) ||
+    d.getFullYear() !== year ||
     d.getMonth() + 1 !== Number(mm) ||
     d.getDate() !== Number(dd)
   ) {
@@ -78,12 +82,49 @@ export function parseDateToIso(value: string | null | undefined): string {
 }
 
 /**
- * Progressive mask for a date being typed: keeps only digits and inserts the
- * slashes, e.g. `04122015` / `4/12/2015` → `04/12/2015`.
+ * Progressive mask for a date being typed as MM/DD/YYYY: keeps only digits,
+ * inserts the slashes, and constrains each segment to a real calendar range so
+ * impossible input can't be entered (month 1–12, day 1–31). A first digit that
+ * can only start a two-digit number is auto-padded, e.g. `2` → `02/`, `4` (day)
+ * → `/04/`. Examples: `04122015` / `4/12/2015` → `04/12/2015`; `22062023`
+ * (typed day-first) → `02/20/6202` — still wrong, but flagged invalid by
+ * `usToIso`, never silently a month of 22.
  */
 export function maskDateInput(raw: string): string {
-  const d = String(raw).replace(/\D/g, '').slice(0, 8);
-  if (d.length <= 2) return d;
-  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
-  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+  const digits = String(raw).replace(/\D/g, '').slice(0, 8);
+  if (!digits) return '';
+
+  let i = 0;
+  // ── month ──────────────────────────────────────────────────────────────
+  let mm = digits[i++];
+  if (Number(mm) > 1) {
+    mm = `0${mm}`; // first digit 2–9 can only mean month 02–09
+  } else if (i < digits.length) {
+    const m2 = digits[i];
+    if (Number(`${mm}${m2}`) >= 1 && Number(`${mm}${m2}`) <= 12) {
+      mm += m2; // 01–12: take it
+      i++;
+    }
+    // otherwise (00, 13–19) ignore the 2nd digit and wait for a valid one
+  }
+  if (mm.length < 2) return mm;
+
+  // ── day ────────────────────────────────────────────────────────────────
+  if (i >= digits.length) return `${mm}`;
+  let dd = digits[i++];
+  if (Number(dd) > 3) {
+    dd = `0${dd}`; // first digit 4–9 can only mean day 04–09
+  } else if (i < digits.length) {
+    const d2 = digits[i];
+    if (Number(`${dd}${d2}`) >= 1 && Number(`${dd}${d2}`) <= 31) {
+      dd += d2; // 01–31: take it
+      i++;
+    }
+    // otherwise (00, 32–39) ignore the 2nd digit and wait for a valid one
+  }
+  if (dd.length < 2) return `${mm}/${dd}`;
+
+  // ── year ───────────────────────────────────────────────────────────────
+  const yyyy = digits.slice(i, i + 4);
+  return yyyy ? `${mm}/${dd}/${yyyy}` : `${mm}/${dd}`;
 }

@@ -41,7 +41,7 @@ const en = {
   // Login page
   'login.brandState': 'NORTH DAKOTA',
   'login.brandSub': 'Health & Human Services',
-  'login.headline': 'Quality Child Care Services for North Dakota Families',
+  'login.headline': 'Quality Child Support Services for North Dakota Families',
   'login.desc': 'Supporting healthy child development, expanding provider resources, and assisting parents in finding secure, registered facilities.',
   'login.stat1Num': '1,200+',
   'login.stat1Label': 'Licensed Providers',

@@ -18,7 +18,7 @@ import { useDashboardAuth, StatusPill } from '@components/dashboard/DashboardUI'
 import { ChartCard, MiniMeter, StatTile } from '@components/dashboard/Charts';
 import {
   getActivity,
-  getApplications,
+  fetchApplications,
   getCases,
   getLastPayment,
   getNextPayment,
@@ -48,8 +48,19 @@ export default function ParentDashboard() {
   useEffect(() => {
     if (!ready) return;
     setCases(getCases());
-    setApps(getApplications(user));
-    setActivity(getActivity(user));
+    let cancelled = false;
+    fetchApplications()
+      .then((list) => {
+        if (cancelled) return;
+        setApps(list);
+        setActivity(getActivity(list));
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setApps([]);
+        setActivity(getActivity([]));
+      });
+    return () => { cancelled = true; };
   }, [ready, user]);
 
   const nextPayment = useMemo(() => getNextPayment(), []);

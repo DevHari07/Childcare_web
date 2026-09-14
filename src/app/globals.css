@@ -795,6 +795,72 @@ h3 {
   box-shadow: 0 0 0 3px rgba(217, 56, 30, 0.15);
 }
 
+/* DateField flags a completed-but-impossible date this way. */
+input[aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+input[aria-invalid='true']:focus {
+  box-shadow: 0 0 0 3px rgba(217, 56, 30, 0.15);
+}
+
+/* SsnField: masked-by-default SSN input with an eye toggle to reveal it. */
+.ssn-field {
+  position: relative;
+  display: inline-flex;
+  width: 100%;
+}
+.ssn-field input {
+  width: 100%;
+  padding-right: 38px;
+  /* Password-type inputs default to a wide dot-letter-spacing in some
+     browsers; keep it tight so the masked value doesn't look stretched. */
+  letter-spacing: normal;
+}
+.ssn-field-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.ssn-field-toggle:hover { color: var(--primary); background: var(--surface-hover, rgba(15, 42, 74, 0.06)); }
+.ssn-field-toggle:focus-visible { outline: 2px solid var(--primary-light); outline-offset: 1px; }
+
+/* MaskedSsn: read-only SSN in review/summary screens, revealed on demand. */
+.masked-ssn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+.masked-ssn-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: pointer;
+  flex: none;
+}
+.masked-ssn-toggle:hover { color: var(--primary); background: var(--surface-hover, rgba(15, 42, 74, 0.06)); }
+.masked-ssn-toggle:focus-visible { outline: 2px solid var(--primary-light); outline-offset: 1px; }
+
 .form-error {
   color: var(--danger);
   font-size: 12px;
@@ -4323,10 +4389,14 @@ a.csd-card-title:hover { text-decoration: underline; }
   line-height: 1.6;
 }
 .csd-pill-active,
-.csd-pill-submitted { background: rgba(18, 164, 84, 0.12); color: #0b7a3d; }
+.csd-pill-submitted,
+.csd-pill-approved { background: rgba(18, 164, 84, 0.12); color: #0b7a3d; }
 .csd-pill-in-progress,
-.csd-pill-pending { background: rgba(242, 183, 5, 0.16); color: #8a6d00; }
-.csd-pill-closed { background: #eef1f5; color: var(--text-secondary); }
+.csd-pill-pending,
+.csd-pill-in-review { background: rgba(242, 183, 5, 0.16); color: #8a6d00; }
+.csd-pill-closed,
+.csd-pill-withdrawn { background: #eef1f5; color: var(--text-secondary); }
+.csd-pill-rejected { background: rgba(217, 56, 30, 0.12); color: var(--danger); }
 
 /* ---- Data table ---- */
 .csd-table-wrap {

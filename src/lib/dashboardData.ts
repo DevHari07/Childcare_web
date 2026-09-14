@@ -1,9 +1,9 @@
 /**
  * Data layer for the Child Support consumer dashboard.
  *
- * Applications are real — they come from the same localStorage keys the
- * ApplyWizard writes (`ccap_applications_${userId}` for submitted apps and
- * `ccap_draft_${userId}` for an in-progress draft).
+ * Applications are real — they come straight from the backend (`GET
+ * /applications`), scoped to the signed-in user by their bearer token. There
+ * is no local fallback: what the API returns for this user is what's shown.
  *
  * Cases, payments, accounts, documents and notices have no backend yet, so
  * they are served from the MOCK_* fixtures below. Every read goes through a
@@ -11,6 +11,7 @@
  */
 
 import { formatDateUS } from '@/lib/dateFormat';
+import * as applicationsApi from '@/lib/applicationsApi';
 
 export interface StoredUser {
   id: number | string;
@@ -58,16 +59,31 @@ export interface AccountRow {
 }
 
 // ── Applications ───────────────────────────────────────────────────────────
-export type ApplicationStatus = 'In progress' | 'Submitted';
+export type ApplicationStatus =
+  | 'In progress'
+  | 'Submitted'
+  | 'In review'
+  | 'Approved'
+  | 'Rejected'
+  | 'Withdrawn';
 
 export interface ApplicationSummary {
-  id: string;               // application number / reference number
+  id: string;               // reference code, or "DRAFT-{id}" while unassigned
   name: string;
   status: ApplicationStatus;
   createdDate: string;      // ISO
   submittedDate: string | null;
   isDraft: boolean;
 }
+
+const STATUS_LABEL: Record<string, ApplicationStatus> = {
+  DRAFT: 'In progress',
+  SUBMITTED: 'Submitted',
+  IN_REVIEW: 'In review',
+  APPROVED: 'Approved',
+  REJECTED: 'Rejected',
+  WITHDRAWN: 'Withdrawn',
+};
 
 // ── Messages / Documents / Notices ─────────────────────────────────────────
 export interface DashboardDocument {
@@ -203,75 +219,30 @@ export function getMessages(): DashboardMessage[] {
   return MOCK_MESSAGES;
 }
 
-interface StoredApplicationRecord {
-  referenceNumber?: string;
-  submittedAt?: string;
-  data?: {
-    applicationName?: string;
-    fullName?: string;
-    children?: { firstName?: string; lastName?: string }[];
-  };
-}
-
-interface StoredDraftRecord {
-  data?: StoredApplicationRecord['data'];
-  savedAt?: string;
-}
-
-function applicantLabel(data: StoredApplicationRecord['data']): string {
-  if (!data) return 'Child support application';
-  if (data.applicationName?.trim()) return data.applicationName.trim();
-  const child = data.children?.[0];
-  const childName = child ? `${child.firstName ?? ''} ${child.lastName ?? ''}`.trim() : '';
-  if (childName) return childName;
-  if (data.fullName?.trim()) return data.fullName.trim();
+function applicantLabel(row: applicationsApi.ApplicationSummary): string {
+  if (row.application_name?.trim()) return row.application_name.trim();
+  if (row.applicant_name?.trim()) return row.applicant_name.trim();
   return 'Child support application';
 }
 
-/** Real applications: submitted (from ccap_applications_*) + one in-progress draft. */
-export function getApplications(user: StoredUser | null): ApplicationSummary[] {
-  if (typeof window === 'undefined' || !user) return [];
-  const out: ApplicationSummary[] = [];
-
-  try {
-    const draftRaw = localStorage.getItem(`ccap_draft_${user.id}`);
-    if (draftRaw) {
-      const draft = JSON.parse(draftRaw) as StoredDraftRecord;
-      out.push({
-        id: `DRAFT-${user.id}`,
-        name: applicantLabel(draft.data),
-        status: 'In progress',
-        createdDate: draft.savedAt ?? new Date().toISOString(),
-        submittedDate: null,
-        isDraft: true,
-      });
-    }
-  } catch {
-    /* ignore malformed draft */
-  }
-
-  try {
-    const raw = localStorage.getItem(`ccap_applications_${user.id}`);
-    const list = raw ? (JSON.parse(raw) as StoredApplicationRecord[]) : [];
-    list.forEach((rec, i) => {
-      out.push({
-        id: rec.referenceNumber ?? `APP-${i + 1}`,
-        name: applicantLabel(rec.data),
-        status: 'Submitted',
-        createdDate: rec.submittedAt ?? new Date().toISOString(),
-        submittedDate: rec.submittedAt ?? null,
-        isDraft: false,
-      });
-    });
-  } catch {
-    /* ignore malformed list */
-  }
-
-  return out;
-}
-
-export function getApplication(user: StoredUser | null, id: string): ApplicationSummary | undefined {
-  return getApplications(user).find((a) => a.id === id);
+/**
+ * Every application this user has, straight from the backend. No local
+ * fallback — a DB read failure returns an empty list rather than stale or
+ * fabricated rows, so the dashboard never shows an application that doesn't
+ * exist in `applications`.
+ */
+export async function fetchApplications(): Promise<ApplicationSummary[]> {
+  const rows = await applicationsApi.listApplications();
+  return rows
+    .map((row): ApplicationSummary => ({
+      id: row.reference_code || `DRAFT-${row.id}`,
+      name: applicantLabel(row),
+      status: STATUS_LABEL[row.application_status] ?? 'In progress',
+      createdDate: row.created_at,
+      submittedDate: row.submitted_at,
+      isDraft: row.application_status === 'DRAFT',
+    }))
+    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime());
 }
 
 // ===========================================================================
@@ -375,7 +346,7 @@ export function getNextPayment(): NextPayment {
   return { amount: monthly || 1186, dueDate: '2026-10-01' };
 }
 
-export function getActivity(user: StoredUser | null, limit = 6): ActivityItem[] {
+export function getActivity(apps: ApplicationSummary[], limit = 6): ActivityItem[] {
   const items: ActivityItem[] = [];
 
   MOCK_PAYMENTS.slice(0, 4).forEach((p, i) => {
@@ -388,7 +359,7 @@ export function getActivity(user: StoredUser | null, limit = 6): ActivityItem[] 
     });
   });
 
-  getApplications(user).forEach((a) => {
+  apps.forEach((a) => {
     items.push({
       id: `app-${a.id}`,
       kind: 'application',

@@ -29,6 +29,11 @@ export interface ApplicationSummary {
   submitted_at: string | null;
   created_at: string;
   updated_at: string;
+  application_name: string | null;
+  applicant_type: string | null;
+  service_type: string | null;
+  applicant_name: string | null;
+  child_count: number | null;
 }
 
 export interface ApplicationRecord extends ApplicationSummary {
@@ -114,4 +119,23 @@ export function submitApplication(
 
 export function withdrawApplication(id: number): Promise<ApplicationRecord> {
   return request(`/applications/${id}`, { method: 'DELETE' });
+}
+
+export interface WorkerPushResult {
+  payload: Record<string, unknown>;
+  outcome: {
+    dryRun: boolean;
+    rolledBack: boolean;
+    result?: { aplctn?: { id?: number; aplctn_num?: string }; persons?: unknown[] };
+    planCount: number;
+  };
+}
+
+/**
+ * Hand a submitted application to the CCMS worker, which builds the csa_portal
+ * payload and writes it into the CCMS database. Only call this after the
+ * application reached SUBMITTED (i.e. the applicant clicked "I AGREE").
+ */
+export function pushApplicationToWorker(id: number): Promise<WorkerPushResult> {
+  return request(`/worker/applications/${id}/push?dryRun=false`, { method: 'POST' });
 }
