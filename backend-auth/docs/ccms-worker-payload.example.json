@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "sourceApplicationId": 42,
+    "sourceReferenceCode": "NDCS-2026-0908-4471",
+    "schemaVersion": 1,
+    "submittedAt": "2026-09-08T14:22:00Z",
+    "createdBy": "CSA_PORTAL",
+    "dryRun": true
+  },
+  "aplctn": {
+    "aplctn_name": "Jordan - child support application",
+    "aplctn_status_cd": "Submitted",
+    "aplctn_status_dt": "2026-09-08",
+    "aplctn_start_dt": "2026-09-01",
+    "aplctn_recvd_dt": "2026-09-08",
+    "submit_date": "2026-09-08",
+    "stamped_dt": "2026-09-08",
+    "paper_aplctn_type": "electronic",
+    "case_type": "CS",
+    "jurisd_cd": null,
+    "signed_name": "Alex P Carter",
+    "signed_dt": "2026-09-08",
+    "agree_future_payment": "N",
+    "pymnt_agreement": null,
+    "has_hlth_ins": "N",
+    "is_pymnt_reqd": "N",
+    "review_dt": null
+  },
+  "persons": [
+    {
+      "ref": "applicant",
+      "role": { "role_cd": "CU_CP", "mbr_type": "CP", "relationship_to_child": "Mother" },
+      "person": {
+        "first_name": "ALEX", "middle_name": "P", "last_name": "CARTER", "suffix_cd": null,
+        "dob": "1988-04-12", "gender_cd": "F", "race_cd": null, "ssn": "123456789",
+        "birth_place_city": "Baltimore", "birth_place_state_cd": "MD", "mdn_last_name": "SMITH"
+      },
+      "cp_detail": {
+        "is_custodial_party": "Y", "reln_to_child_cd": "Mother", "service_type_cd": "full",
+        "is_tca_applicant": "N", "is_cash_asstnce": "N", "is_med_asstnce": "N",
+        "is_child_care_asstnce": "Y", "is_support_order": "N", "is_family_violence": "N",
+        "is_employed": "Y", "text_ntfn": "N", "email_ntfn": "Y", "ntfn_typ": "EMAIL"
+      },
+      "addresses": [
+        { "addr_type_cd": "RES", "addr_line_1": "1204 Main Ave", "addr_line_2": "Apt 3", "city": "Baltimore", "county_cd": null, "state_cd": "MD", "zip_cd": "21201", "country_cd": "USA" },
+        { "addr_type_cd": "MAI", "addr_line_1": "PO Box 12", "addr_line_2": null, "city": "Baltimore", "county_cd": null, "state_cd": "MD", "zip_cd": "21201", "country_cd": "USA" }
+      ],
+      "contacts": [
+        { "contact_type_key": "HM", "contact_type_value": "4105551234" },
+        { "contact_type_key": "CL", "contact_type_value": "4105555678" },
+        { "contact_type_key": "WK", "contact_type_value": "4105559999" },
+        { "contact_type_key": "PER", "contact_type_value": "alex@example.com" }
+      ],
+      "employers": [
+        { "is_employed": "Y", "employer_name": "SANFORD HEALTH", "occupation": null, "phone_num": "7015552468", "self_empmnt_ind": "N", "emplyr_typ": null, "empmnt_start_dt": null, "empmnt_end_dt": null,
+          "address": { "addr_line_1": null, "addr_line_2": null, "city": null, "state_cd": null, "zip_cd": null, "country_cd": null } }
+      ],
+      "income": [
+        { "income_type": "WAGE", "income_source": "SANFORD HEALTH", "income_frequency": "MON", "income_amount": 3200, "household_size": 4 }
+      ]
+    },
+    {
+      "ref": "child-1",
+      "role": { "role_cd": "CHILD", "mbr_type": null, "relationship_to_child": null },
+      "person": {
+        "first_name": "JORDAN", "middle_name": null, "last_name": "CARTER", "suffix_cd": null,
+        "dob": "2015-06-01", "gender_cd": "M", "race_cd": null, "ssn": "987654321",
+        "birth_place_city": "Baltimore", "birth_place_state_cd": "MD"
+      },
+      "child_detail": {
+        "has_paternity": "Y", "paternity_type": null, "paternity_state_cd": "MD", "paternity_county_cd": null,
+        "ptrnty_est_dt": "2016-01-10", "court_order_number": null, "has_insurance": "N", "conception_state_cd": null
+      }
+    },
+    {
+      "ref": "ncp",
+      "role": { "role_cd": "NCP", "mbr_type": "AP", "relationship_to_child": "Father" },
+      "person": {
+        "first_name": "SAM", "middle_name": null, "last_name": "REED", "suffix_cd": null,
+        "dob": "1985-02-20", "gender_cd": "M", "race_cd": "WH", "ssn": "555443333",
+        "birth_place_city": "Fargo", "birth_place_state_cd": "ND",
+        "eye_color_cd": "N", "hair_color_cd": "N", "height_feet": 5, "height_inch": 11, "weight": 180,
+        "nick_name": "Sammy", "identity_mark": "tattoo on left forearm", "mdn_last_name": null
+      },
+      "ncp_detail": {
+        "last_know_addr_dt": null, "tribal_cd": null, "is_employed": "Y",
+        "text_ntfn": "N", "email_ntfn": "N", "ntfn_typ": null
+      },
+      "addresses": [
+        { "addr_type_cd": "RES", "addr_line_1": "88 River Rd", "addr_line_2": null, "city": "Fargo", "county_cd": null, "state_cd": "ND", "zip_cd": "58102", "country_cd": "USA" }
+      ],
+      "contacts": [
+        { "contact_type_key": "HM", "contact_type_value": "7015550101" },
+        { "contact_type_key": "CL", "contact_type_value": "7015550102" }
+      ],
+      "employers": [
+        { "is_employed": "Y", "employer_name": "ACME LOGISTICS", "occupation": "Driver", "phone_num": "7015550200", "self_empmnt_ind": "N" }
+      ],
+      "income": [
+        { "income_type": "WAGE", "income_source": "ACME LOGISTICS", "income_frequency": "MON", "income_amount": 4100 }
+      ],
+      "nc_identity": {
+        "has_state_id": "Y", "state_id_num": "D1234567", "state_id_state_cd": "ND",
+        "has_auto": 1, "auto_tag_id": "ABC123", "auto_tag_state_cd": "ND",
+        "auto_make_model": "Toyota Camry", "auto_year": "2018",
+        "has_other_child_support_case": "Y", "other_child_support_state_cd": "VA"
+      },
+      "nc_military_srvc": {
+        "has_military_service": "Y", "is_currently_in_service": "N", "military_branch_cd": "ARMY",
+        "from_date": "2005-01-01", "to_date": "2009-01-01"
+      },
+      "nc_jail_srvc": {
+        "has_jail_service": "N", "is_incarcerated": "N", "from_date": null, "to_date": null,
+        "jail_name": null, "prsnr_admsn_dt": null, "prsnr_rls_dt": null, "address": null
+      },
+      "nc_child_sppt": [
+        { "has_court_ordered": "Y", "court_order_num": "CO-2020-111", "court_order_dt": "2020-03-01",
+          "court_ordered_state_cd": "VA", "has_pay_support": "Y", "to_whom_cd": "OTHR",
+          "agency_name": "Fairfax County CSA", "last_payment_dt": "2026-07-01", "paid_amount": 250,
+          "is_military_allotment": "N", "has_other_child_support_case": "Y", "other_child_support_state_cd": "VA",
+          "agency": { "adr_line_1": null, "city": null, "state_cd": "VA", "zip_cd": null, "phone_num": null } }
+      ],
+      "relatives": [
+        { "relative_type_cd": "MOTHER", "first_name": "MARY", "last_name": "REED", "maiden_name": "JONES", "city": "Fargo", "state_cd": "ND" },
+        { "relative_type_cd": "FATHER", "first_name": "JOHN", "last_name": "REED", "maiden_name": null },
+        { "relative_type_cd": "NEAREST_RELATIVE", "first_name": "PAT", "last_name": "REED", "phone_num": "7015550303", "adr_line_1": "12 Oak St", "city": "Fargo", "state_cd": "ND" }
+      ],
+      "attorney": { "first_name": null, "last_name": null, "phone_num": null, "work_email": null, "address": null },
+      "financial_accounts": [
+        { "institution_name": "Bank of America", "account_type": "CHECKING", "account_number": "****4321", "account_value": 1500, "in_bankruptcy": "N" }
+      ],
+      "vehicles": [
+        { "type": "car", "year": "2018", "make": "Toyota", "model": "Camry", "license_number": "ABC123", "state": "ND" }
+      ],
+      "property": { "description": "Boat", "estimated_value": 20000, "address": null, "lien_holder": "First Bank" }
+    }
+  ],
+  "support_orders": [
+    { "order_type": "child_support", "order_number": "CO-2019-555", "state_filed": "MD", "date_filed": "2019-05-01",
+      "amount": 400, "frequency": "monthly", "start_date": "2019-06-01", "end_date": null, "children": ["child-1"] }
+  ],
+  "other_children": [
+    { "first_name": "TAYLOR", "last_name": "CARTER", "dob": "2019-02-02" }
+  ],
+  "other_information": "Free-text notes the applicant added.",
+  "case": {
+    "create": true, "case_name": "CARTER, ALEX", "case_status_cd": "PENDING",
+    "case_type": "CS", "services_rqd": "FS", "jurisd": null
+  },
+  "work_item": {
+    "create": true, "work_item_type_cd": "APPL", "work_item_status_cd": "OPEN",
+    "start_dt": "2026-09-08T14:22:00Z", "due_dt": null
+  }
+}

@@ -16,9 +16,9 @@
 # next.js
 /.next/
 /out/
-/backend-auth/
-/backend-pdf/
-C:\Projects\childcare_main\Childcare_web\backend-pdf/
+# /backend-auth/
+# /backend-pdf/
+# C:\Projects\childcare_main\Childcare_web\backend-pdf/
 /db
 # production
 /build

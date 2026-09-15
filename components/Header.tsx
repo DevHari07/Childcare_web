@@ -53,7 +53,7 @@ export default function Header() {
   return (
     <header className="gov-header">
       <div className="gov-header-container">
-        <Link href="/" className="gov-logo-link" aria-label="North Dakota Child Care Home">
+        <Link href="/" className="gov-logo-link" aria-label="North Dakota Child Support Home">
           <Logo />
         </Link>
 

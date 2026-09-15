@@ -14,7 +14,7 @@ const en = {
 
   // Home page
   'home.eyebrow': 'North Dakota Health & Human Services',
-  'home.title': 'Child Care Services Portal',
+  'home.title': 'Child Support Services Portal',
   'home.subtitle': 'An official application system for the State of North Dakota. Find, manage, and apply for child Support and licensing.',
   'home.loggedInAs': 'Logged in as',
   'home.goToDashboard': 'Go to Dashboard',

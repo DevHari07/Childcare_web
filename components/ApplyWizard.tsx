@@ -29,6 +29,7 @@ import {
   Plus,
   MessageSquare,
   PenTool,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/i18n/LanguageContext';
 import type { TranslationKey } from '@/lib/i18n/en';
@@ -1837,6 +1838,12 @@ export default function ApplyWizard() {
     router.push('/parent/dashboard');
   };
 
+  // Sidebar "Go to Dashboard" — leaves without saving anything (no draft write),
+  // unlike Save & Exit above. Whatever draft already existed on disk is untouched.
+  const handleGoToDashboard = () => {
+    router.push('/parent/dashboard');
+  };
+
   const handleSubmit = async () => {
     const err = validateStep(stepIndex);
     if (err) {
@@ -2541,6 +2548,12 @@ export default function ApplyWizard() {
                 </React.Fragment>
               );
             })}
+            <div className="apply-sidebar-footer">
+              <button type="button" className="apply-sidebar-dashboard-btn" onClick={handleGoToDashboard}>
+                <LayoutDashboard size={16} strokeWidth={2} />
+                Go to Dashboard
+              </button>
+            </div>
           </nav>
 
           <div className="apply-card">

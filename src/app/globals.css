@@ -2414,6 +2414,36 @@ input[aria-invalid='true']:focus {
   display: none;
 }
 
+.apply-sidebar-footer {
+  margin-top: auto; /* pin to the bottom of the sidebar, however tall it stretches */
+  padding-top: 12px;
+  border-top: 1px solid rgba(15, 42, 74, 0.1);
+}
+
+.apply-sidebar-dashboard-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 1px dashed rgba(15, 42, 74, 0.25);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s var(--ease);
+}
+
+.apply-sidebar-dashboard-btn:hover {
+  background: rgba(15, 42, 74, 0.05);
+  border-color: rgba(15, 42, 74, 0.4);
+  color: var(--primary);
+}
+
 .side-step {
   display: flex;
   align-items: flex-start;

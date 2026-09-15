@@ -15,7 +15,7 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "North Dakota HHS - Child Support Portal",
-  description: "Official child care licensing, assistance, and resources portal for the State of North Dakota.",
+  description: "Official child support licensing, assistance, and resources portal for the State of North Dakota.",
 };
 
 interface RootLayoutProps {
