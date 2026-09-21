@@ -114,6 +114,17 @@ class _Writer:
         prsn_role_id = _pk(rl, "prsn_role_id")
         summary["prsn_role_id"] = prsn_role_id
 
+        ssn_val = node.get("ssn")
+        if ssn_val:
+            self._exec(cur, "prsn_vrfctn_stts", {
+                "prsn_id": person_id,
+                "attr_typ": "P",
+                "attr_nam": "SSN",
+                "attr_id": str(ssn_val),
+                "vrfctn_stts": "VERIFIED",
+                "vrfctn_src": self.actor or "CSA_PORTAL",
+            }, "stts_id")
+
         ncp_prsn_id = cp_prsn_id = None
         if "cp_detail" in node:
             cr = self._exec(cur, "cp_prsn_detail", {**node["cp_detail"], "prsn_role_id": prsn_role_id}, "cp_prsn_id")
@@ -227,6 +238,7 @@ def soft_delete_aplctn(aplctn_id: int) -> dict:
                     mark("nc_military_srvc", "ncp_prsn_id = any(%s)", (ncp_ids,))
                     mark("nc_jail_srvc", "ncp_prsn_id = any(%s)", (ncp_ids,))
             if person_ids:
+                mark("prsn_vrfctn_stts", "prsn_id = any(%s)", (person_ids,))
                 mark("person", "id = any(%s)", (person_ids,))
         conn.commit()
     return {"softDeleted": aplctn_id, "counts": counts}

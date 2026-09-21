@@ -21,7 +21,7 @@ submitted application.
 
 | ER doc says | Reality in `csa_portal` | Handling |
 |---|---|---|
-| `person.ssn VARCHAR(9)` | **no `ssn` column** (only `aka_ssn`) | SSN carried per-person in the payload (`persons[].ssn`), **not written** — needs a target (`prsn_vrfctn_stts`? `csa_fti`? member service) |
+| `person.ssn VARCHAR(9)` | **no `ssn` column** (only `aka_ssn`) | SSN carried per-person in payload (`persons[].ssn`) and written to `csa_portal.prsn_vrfctn_stts` (`attr_nam='SSN'`, `attr_typ='P'`) for login/case linkage |
 | `prsn_contact_link.contact_type_cd` | column doesn't exist | dropped; the type lives on `contact.contact_type_key` |
 | address type on `prsn_addr_link` | it's a separate table `addr_addr_typ_lnk (address_id, addr_type_cd)` | worker inserts that row too |
 | `cp_prsn_income` / `ncp_prsn_income` | `cp_prsn_id` / `ncp_prsn_id` are **NOT NULL** | worker captures them from the `*_prsn_detail` insert |
